@@ -1,10 +1,10 @@
-# Oracle Autonomous Database with Azure Key Management over Private Endpoints
+# Oracle Exascale with Azure Key Management over Private Endpoints
 
 This repository provides comprehensive infrastructure-as-code (Terraform) and step-by-step guides for configuring Oracle Autonomous Database (ODAA) with Azure key management services using private endpoints for enhanced security.
 
 ## 🆕 Recent Updates (February 2026)
 
-- **ADBS Naming Fix**: Auto-generated names now follow pattern `adbsakvtest[random]` (e.g., `adbsakvtest875`)
+- **ADB Naming Fix (legacy)**: Auto-generated names now follow pattern `adbsakvtest[random]` (e.g., `adbsakvtest875`)
 - **Terraform Variables**: Always generates complete `autonomous_database_config` block in tfvars
 - **HSM Output**: Added missing `managed_hsm` output to Terraform for proper HSM configuration
 - **HSM Activation**: Improved detection of HSM activation state and Security Domain handling
@@ -76,7 +76,7 @@ flowchart TB
     
     subgraph Azure["Azure Cloud"]
         subgraph VNet["Virtual Network<br/>10.X.0.0/16"]
-            subgraph ADBSubnet["ADBS Subnet<br/>10.X.1.0/24"]
+            subgraph ADBSubnet["Oracle Subnet<br/>10.X.1.0/24"]
                 ADB["Oracle Autonomous<br/>Database"]
             end
             
@@ -228,7 +228,7 @@ flowchart TB
         VNet["Virtual Network<br/>10.X.0.0/16"]
         
         subgraph Subnets["Subnets"]
-            S1["ADBS Subnet<br/>Delegated to Oracle"]
+            S1["Oracle Subnet<br/>Delegated to Oracle"]
             S2["Private Endpoints<br/>Subnet"]
             S3["NAT Gateway<br/>Subnet"]
             S4["VM Subnet"]
@@ -372,24 +372,24 @@ flowchart LR
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/sihbher/oracle-adbs-akv-tests.git
-cd oracle-adbs-akv-tests
+git clone https://github.com/sihbher/odaa-akv-tests.git
+cd odaa-akv-tests
 
 # 2. Configure deployment
 cp .env.example .env
 # Edit .env with your Azure subscription, location, and passwords
 
 # 3. Deploy with Azure Key Vault (default)
-./deploy-adbs-demo.sh -akv
+./deploy-exascale-demo.sh -akv
 
 # Or deploy with Managed HSM (FIPS 140-2 Level 3)
-./deploy-adbs-demo.sh -hsm
+./deploy-exascale-demo.sh -hsm
 
 # Infrastructure only (review before applying)
-./deploy-adbs-demo.sh --only-terraform
+./deploy-exascale-demo.sh --only-terraform
 
 # Configure Managed HSM after infrastructure deployment
-./deploy-adbs-demo.sh --only-configure-hsm
+./deploy-exascale-demo.sh --only-configure-hsm
 ```
 
 ### Option 2: Manual Terraform Deployment
@@ -397,8 +397,8 @@ cp .env.example .env
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/sihbher/oracle-adbs-akv-tests.git
-cd oracle-adbs-akv-tests/infra-deployment
+git clone https://github.com/sihbher/odaa-akv-tests.git
+cd odaa-akv-tests/infra-deployment
 ```
 
 ### 2. Review and Customize Variables
@@ -412,7 +412,7 @@ cp terraform.tfvars.example terraform.tfvars  # If example exists
 Key variables to configure:
 
 ```hcl
-location = "uksouth"  # Azure region
+location = "eastus"  # Azure region
 
 # Feature flags
 enable_log_analytics_logging = true   # Deploy Log Analytics & diagnostics
@@ -583,7 +583,7 @@ When `enable_managed_hsm = true`, additional HSM-backed keys are created:
 ```mermaid
 flowchart TB
     subgraph VNet["Virtual Network - 10.X.0.0/16"]
-        subgraph S1["ADBS Subnet - 10.X.1.0/24"]
+        subgraph S1["Oracle Subnet - 10.X.1.0/24"]
             direction TB
             ADB["Oracle Autonomous<br/>Database<br/>(Delegated)"]
         end
@@ -669,7 +669,7 @@ repo/
 
 | File | Purpose | Key Resources |
 |------|---------|---------------|
-| `main.tf` | Core networking infrastructure | VNet, ADBS subnet, private endpoints subnet, VM subnet, NAT subnet, firewall subnet |
+| `main.tf` | Core networking infrastructure | VNet, Oracle Subnet, private endpoints subnet, VM subnet, NAT subnet, firewall subnet |
 | `key_vault.tf` | Key Vault with private connectivity | Key Vault, access policies, RSA/EC keys, private endpoint, private DNS zone |
 | `managed_hsm.tf` | Managed HSM (optional) | Managed HSM, HSM keys (RSA/EC/AES), private endpoint, DNS zone |
 | `log_analytics.tf` | Observability (optional) | Log Analytics workspace, diagnostic settings, workbook |
@@ -1016,7 +1016,7 @@ az network vnet show --resource-group <rg> --name <vnet-name>
 
 # 2. Check Key Vault keys
 az keyvault key list --vault-name <kv-name>
-az keyvault key show --vault-name <kv-name> --name adbs-encryption-rsa-2048
+az keyvault key show --vault-name <kv-name> --name exascale-encryption-rsa-2048
 
 # 3. Verify Managed HSM (if enabled)
 az keyvault role assignment list --hsm-name <hsm-name>
@@ -1263,25 +1263,25 @@ terraform_init() {
 
 ```bash
 # Fresh deployment with Azure Key Vault
-./deploy-adbs-demo.sh -akv
+./deploy-exascale-demo.sh -akv
 
 # Fresh deployment with Managed HSM
-./deploy-adbs-demo.sh -hsm
+./deploy-exascale-demo.sh -hsm
 
 # Infrastructure only (review plan first)
-./deploy-adbs-demo.sh --only-terraform
+./deploy-exascale-demo.sh --only-terraform
 
 # Configure existing HSM
-./deploy-adbs-demo.sh --only-configure-hsm
+./deploy-exascale-demo.sh --only-configure-hsm
 
 # Generate tfvars for manual execution
-./deploy-adbs-demo.sh --create-tfvars
+./deploy-exascale-demo.sh --create-tfvars
 
 # Destroy infrastructure
-./deploy-adbs-demo.sh --destroy
+./deploy-exascale-demo.sh --destroy
 
 # Help and options
-./deploy-adbs-demo.sh --help
+./deploy-exascale-demo.sh --help
 ```
 
 ### Terraform Commands
@@ -1368,3 +1368,8 @@ az keyvault role assignment create \
 ---
 
 Made with ❤️ for secure cloud deployments
+
+
+
+
+

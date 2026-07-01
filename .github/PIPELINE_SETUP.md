@@ -184,7 +184,7 @@ Now we'll configure GitHub to use the Azure credentials securely.
 
 ### Step 1: Navigate to Repository Settings
 
-1. Go to your repository: **`https://github.com/sihbher/oracle-adbs-akv-tests`**
+1. Go to your repository: **`https://github.com/sihbher/odaa-akv-tests`**
 2. Click **"Settings"** tab (top right)
 3. Look for **"Secrets and variables"** in the left sidebar
 4. Click **"Actions"**
@@ -288,9 +288,9 @@ First, create the storage account (see [Terraform Backend Setup](#terraform-back
 | Secret Name | Example Value | Description |
 |-------------|---------------|-------------|
 | `TERRAFORM_BACKEND_RESOURCE_GROUP` | `rg-terraform-state` | Resource group for state storage |
-| `TERRAFORM_BACKEND_STORAGE_ACCOUNT` | `sttfstateuksouth001` | Storage account name (globally unique) |
+| `TERRAFORM_BACKEND_STORAGE_ACCOUNT` | `sttfstateeastus001` | Storage account name (globally unique) |
 | `TERRAFORM_BACKEND_CONTAINER_NAME` | `tfstate` | Blob container name |
-| `TERRAFORM_BACKEND_KEY` | `adbs-akv.tfstate` | State file name |
+| `TERRAFORM_BACKEND_KEY` | `exascale-akv.tfstate` | State file name |
 
 **Steps to add each:**
 
@@ -314,7 +314,7 @@ Add these recommended variables:
 
 | Variable Name | Example Value | Description |
 |---------------|---------------|-------------|
-| `AZURE_LOCATION` | `uksouth` | Default Azure region |
+| `AZURE_LOCATION` | `eastus` | Default Azure region |
 | `TERRAFORM_VERSION` | `1.6.0` | Terraform version to use |
 | `ENVIRONMENT` | `dev` | Environment name (dev/staging/prod) |
 
@@ -336,7 +336,7 @@ Run these commands in your terminal:
 ```bash
 # Set variables
 RESOURCE_GROUP="rg-terraform-state"
-LOCATION="uksouth"
+LOCATION="eastus"
 # Generate unique storage account name (must be globally unique)
 STORAGE_ACCOUNT="sttfstate$(date +%s | tail -c 7)"
 CONTAINER_NAME="tfstate"
@@ -427,7 +427,7 @@ terraform {
     # resource_group_name  = "rg-terraform-state"
     # storage_account_name = "sttfstateXXXXXXX"
     # container_name       = "tfstate"
-    # key                  = "adbs-akv.tfstate"
+    # key                  = "exascale-akv.tfstate"
   }
 }
 ```
@@ -726,7 +726,7 @@ az role assignment create \
 **Error:**
 
 ```
-Error: A resource with the ID "/subscriptions/.../resourceGroups/rg-adbs-uksouth-123" already exists
+Error: A resource with the ID "/subscriptions/.../resourceGroups/rg-exascale-eastus-123" already exists
 ```
 
 **Cause:** Resource exists in Azure but not in Terraform state
@@ -738,7 +738,7 @@ Error: A resource with the ID "/subscriptions/.../resourceGroups/rg-adbs-uksouth
 ```bash
 # Locally (for testing)
 cd infra-deployment
-terraform import azurerm_resource_group.main /subscriptions/.../resourceGroups/rg-adbs-uksouth-123
+terraform import azurerm_resource_group.main /subscriptions/.../resourceGroups/rg-exascale-eastus-123
 terraform plan
 ```
 
@@ -837,14 +837,14 @@ Add to workflow file:
 
 ```yaml
 env:
-  TF_VAR_location: ${{ vars.AZURE_LOCATION || 'uksouth' }}
+  TF_VAR_location: ${{ vars.AZURE_LOCATION || 'eastus' }}
   TF_VAR_enable_managed_hsm: ${{ vars.ENABLE_MANAGED_HSM || 'false' }}
 ```
 
 Or create `terraform.tfvars`:
 
 ```hcl
-location = "uksouth"
+location = "eastus"
 enable_managed_hsm = false
 ```
 
@@ -1033,7 +1033,7 @@ flowchart LR
 
 **Last Updated:** December 12, 2025  
 **Version:** 1.0  
-**Repository:** oracle-adbs-akv-tests  
+**Repository:** odaa-akv-tests  
 **Author:** Pipeline Setup Guide
 
 ---
@@ -1041,3 +1041,7 @@ flowchart LR
 💡 **Questions?** Open an issue in the repository or check the [Troubleshooting](#troubleshooting) section.
 
 🎉 **Happy Deploying!**
+
+
+
+

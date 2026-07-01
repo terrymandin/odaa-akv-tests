@@ -1,77 +1,79 @@
-# Oracle Autonomous Database with Azure Key Management over Private Endpoints
+# Oracle Exascale with Azure Key Management over Private Endpoints
 
-Infrastructure-as-Code (Terraform) and Bash orchestration for deploying [Oracle Autonomous Database Serverless (ADBS)](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/) on Azure with [Azure Key Vault](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or [Azure Managed HSM](https://learn.microsoft.com/en-us/azure/key-vault/managed-hsm/overview) for Customer-Managed Encryption Keys (CMEK) over [Private Endpoints](https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-overview).
+Infrastructure-as-Code (Terraform) and Bash orchestration for deploying [Oracle Database@Azure Exascale](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/oracle-database-exascale-overview) on Azure with [Azure Key Vault](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) or [Azure Managed HSM](https://learn.microsoft.com/en-us/azure/key-vault/managed-hsm/overview) for Customer-Managed Encryption Keys (CMEK) over [Private Endpoints](https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-overview).
 
 ## How It Works
 
-The deployment is split in two phases:
+Deployment is split into two phases:
 
 | Phase | How | What |
 |-------|-----|------|
-| **1. Infrastructure** | `deploy-adbs-demo.sh` (Terraform + Bash) | VNet, subnets, Key Vault/HSM, Private Endpoints, DNS zones, Firewall, NAT Gateway, Jumpbox VM, Oracle ADBS |
-| **2. Key integration** | Manual (OCI Console + SQL) | OCI DNS records, OAuth Service Principal, Key Vault Access Policies, CMEK configuration, `route_outbound_connections` |
+| **1. Infrastructure** | `deploy-exascale-demo.sh` (Terraform + Azure CLI) | VNet, subnets, Key Vault/HSM, Private Endpoints, DNS zones, Firewall, NAT Gateway, Jumpbox VM, Oracle Exascale Storage Vault + VM Cluster |
+| **2. Key integration** | Manual (Oracle SQL + OCI Console) | Keystore open, TDE master key creation, key rotation, validation |
 
-Phase 1 is fully automated. Phase 2 requires manual steps documented in [Step-by-step.md](Step-by-step.md) (sections 3–7) and [lessons-learned-adbs.md](lessons-learned-adbs.md).
+Phase 1 is fully automated. Phase 2 is documented in [exascale-test-plan.md](exascale-test-plan.md) and [Step-by-step.md](Step-by-step.md).
 
 ## Quick Start
 
 ```bash
 # 1. Clone and configure
-git clone https://github.com/sihbher/oracle-adbs-akv-tests.git
-cd oracle-adbs-akv-tests
-cp .env.example .env   # Edit with your values (at minimum: AZ_LOCATION, ADBS_ADMIN_PASSWORD)
+git clone https://github.com/terrymandin/odaa-akv-tests.git
+cd odaa-akv-tests
+cp .env.example .env   # Edit with your values (at minimum: AZ_LOCATION, ORACLE_SSH_PUBLIC_KEY)
 
-# 2. Deploy infrastructure with Key Vault (default)
-./deploy-adbs-demo.sh -akv
+# 2. Deploy Exascale + AKV Standard (default)
+./deploy-exascale-demo.sh -exascale
 
-# Or deploy with Managed HSM (FIPS 140-3 Level 3)
-./deploy-adbs-demo.sh -hsm
+# Or with AKV Premium (HSM-backed keys inside AKV)
+# Set KEY_VAULT_SKU=premium in .env, then run the same command
+
+# Or with Azure Managed HSM (FIPS 140-3 Level 3, single-tenant)
+./deploy-exascale-demo.sh -exascale-hsm
 ```
 
-### All Orchestrator Commands
+### Orchestrator Commands
 
 ```bash
-./deploy-adbs-demo.sh -akv                # Deploy infra + Key Vault
-./deploy-adbs-demo.sh -hsm                # Deploy infra + Managed HSM
-./deploy-adbs-demo.sh --only-terraform    # Plan only (no apply)
-./deploy-adbs-demo.sh --only-configure-hsm # Activate & configure existing HSM
-./deploy-adbs-demo.sh --create-tfvars     # Generate terraform.tfvars for manual use
-./deploy-adbs-demo.sh --destroy           # Destroy all infrastructure
-./deploy-adbs-demo.sh --help              # Show full help
+./deploy-exascale-demo.sh -exascale              # Exascale + AKV
+./deploy-exascale-demo.sh -exascale-hsm          # Exascale + Managed HSM
+./deploy-exascale-demo.sh -akv                   # ADB Serverless + AKV (legacy)
+./deploy-exascale-demo.sh -hsm                   # ADB Serverless + HSM (legacy)
+./deploy-exascale-demo.sh --only-terraform       # Plan only (no apply)
+./deploy-exascale-demo.sh --only-configure-hsm   # Activate & configure an existing HSM
+./deploy-exascale-demo.sh --create-tfvars        # Generate terraform.tfvars for manual use
+./deploy-exascale-demo.sh --destroy              # Destroy all infrastructure
+./deploy-exascale-demo.sh --help                 # Show full help
 ```
 
 ### What the Orchestrator Does
 
 ```
-deploy-adbs-demo.sh
+deploy-exascale-demo.sh
 ├── Validate .env configuration & prerequisites (az, terraform, jq)
 ├── Authenticate to Azure (az login + subscription)
 ├── Generate terraform.tfvars from .env
 ├── terraform init → validate → plan → apply
 │   ├── Resource Group
-│   ├── VNet + 5 subnets (ADBS, PE, NAT, VM, Firewall)
+│   ├── VNet + 5 subnets (Oracle, PE, NAT, VM, Firewall)
 │   ├── Key Vault + Private Endpoint + RSA/EC keys + rotation policies
-│   ├── Managed HSM + Private Endpoint (if -hsm)
-│   ├── Private DNS zones (privatelink.vaultcore.azure.net, etc.)
+│   ├── Managed HSM + Private Endpoint  (if -exascale-hsm)
+│   ├── Private DNS zones
 │   ├── Azure Firewall + NAT Gateway
 │   ├── Windows Jumpbox VM
-│   ├── Log Analytics + diagnostics (optional)
-│   └── Oracle Autonomous Database
-├── Activate & configure Managed HSM (if -hsm)
+│   ├── Log Analytics + diagnostics  (optional)
+│   └── Oracle Exascale Storage Vault + VM Cluster
+├── Activate & configure Managed HSM  (if -exascale-hsm)
 │   ├── Security domain download
 │   ├── Role assignments (Crypto Officer, Crypto User)
 │   └── Create HSM encryption keys
 └── Display deployment summary with outputs
 ```
 
-### After Infrastructure Deployment (Manual Steps)
+### After Infrastructure Deployment
 
-1. **Configure OCI DNS** — Create private DNS zones in the OCI VCN for Key Vault resolution → [Step-by-step.md §3](Step-by-step.md)
-2. **Set up OAuth** — Enable Service Principal auth on ADBS, complete consent flow → [Step-by-step.md §4](Step-by-step.md)
-3. **Configure Access Policies** — Grant Key Vault permissions to the Service Principal → [Step-by-step.md §4.6](Step-by-step.md)
-4. **Set Network ACLs** — Allow ADBS to reach Key Vault → [Step-by-step.md §5](Step-by-step.md)
-5. **Configure CMEK** — Assign encryption key and enforce private endpoint routing → [Step-by-step.md §6](Step-by-step.md)
-6. **Validate** — DNS resolution, connectivity, wallet status, encrypted tablespaces → [Step-by-step.md §7](Step-by-step.md)
+See [exascale-test-plan.md](exascale-test-plan.md) for the full key lifecycle test plan covering AKV Standard, AKV Premium, and MHSM scenarios.
+
+---
 
 ## Documentation Index
 
@@ -79,33 +81,39 @@ deploy-adbs-demo.sh
 
 | Document | Description |
 |----------|-------------|
+| **[exascale-test-plan.md](exascale-test-plan.md)** | Manual test plan: AKV Standard, Premium, and MHSM key lifecycle on Exascale |
 | **[Step-by-step.md](Step-by-step.md)** | End-to-end implementation guide: prerequisites, Azure infra, OCI DNS, OAuth, Key Vault integration, and validation queries |
-| **[lessons-learned-adbs.md](lessons-learned-adbs.md)** | Critical gotchas, undocumented requirements, bugs, and workarounds from 3 test iterations — **read this before starting** |
+| **[lessons-learned-exascale.md](lessons-learned-exascale.md)** | Critical gotchas, undocumented requirements, bugs, and workarounds — **read this before starting** |
 
 ### Reference
 
 | Document | Description |
 |----------|-------------|
-| **[DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md)** | Architecture diagrams, security overview, configuration options, monitoring, and quick reference commands |
+| **[DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md)** | Architecture diagrams, security overview, configuration options, monitoring, and quick-reference commands |
 | **[infra-deployment/README.md](infra-deployment/README.md)** | Terraform infrastructure reference: resources, variables, outputs |
-| **[deploy/lib/README.md](deploy/lib/README.md)** | Bash library modules: functions, usage, and examples |
 | **[.env.example](.env.example)** | All configurable variables with descriptions and defaults |
 | **[AGENTS.MD](AGENTS.MD)** | AI agent knowledge base for automated assistance |
+
+---
 
 ## Repository Structure
 
 ```
 .
-├── deploy-adbs-demo.sh            # Bash orchestrator (wraps Terraform + Azure CLI)
+├── deploy-exascale-demo.sh        # Bash orchestrator (wraps Terraform + Azure CLI)
 ├── .env.example                   # Configuration template (→ copy to .env)
+├── exascale-test-plan.md          # Manual test plan for AKV/MHSM key lifecycle
+├── Step-by-step.md                # End-to-end implementation guide
+├── lessons-learned-exascale.md    # Gotchas, undocumented requirements, workarounds
 ├── infra-deployment/              # Terraform configuration
 │   ├── main.tf                    #   VNet, subnets, route tables
-│   ├── adbs.tf                    #   Oracle Autonomous Database (azurerm_oracle_autonomous_database)
+│   ├── exascale.tf                #   Oracle Exascale Storage Vault + VM Cluster (AzAPI)
+│   ├── adbs.tf                    #   Oracle ADB Serverless (legacy, deploy_exascale=false)
 │   ├── key_vault.tf               #   Key Vault + Private Endpoint + RSA/EC keys + rotation
 │   ├── managed_hsm.tf             #   Managed HSM + Private Endpoint (optional)
 │   ├── firewall.tf                #   Azure Firewall (Standard SKU)
 │   ├── firewall_policy.tf         #   Firewall rules and policies
-│   ├── nat_gateway.tf             #   NAT Gateway for ADBS outbound
+│   ├── nat_gateway.tf             #   NAT Gateway for outbound connectivity
 │   ├── jumpbox_vm.tf              #   Windows Jumpbox VM
 │   ├── log_analytics.tf           #   Log Analytics + diagnostics (optional)
 │   ├── event_hub.tf               #   Event Hub streaming (optional)
@@ -113,16 +121,17 @@ deploy-adbs-demo.sh
 │   ├── variables.tf               #   Input variables with validation
 │   ├── outputs.tf                 #   Resource IDs, URIs, IPs
 │   ├── locals.tf                  #   Computed values
-│   └── providers.tf               #   azurerm, random providers
-├── deploy/lib/                    # Modular Bash library
-│   ├── common.sh                  #   Logging, colors, utilities
-│   ├── validation.sh              #   Pre-flight checks (.env, tools, passwords)
-│   ├── azure.sh                   #   Azure CLI login, subscription
-│   ├── terraform.sh               #   init, validate, plan, apply, destroy, output
-│   ├── config-akv.sh              #   Key Vault post-deploy configuration
-│   └── config-hsm.sh             #   HSM activation, role assignment, key creation
-└── certs/                         # HSM security domain certificates & keys
+│   └── providers.tf               #   azurerm, azapi, random providers
+└── deploy/lib/                    # Modular Bash library
+    ├── common.sh                  #   Logging, colors, utilities
+    ├── validation.sh              #   Pre-flight checks (.env, tools, passwords)
+    ├── azure.sh                   #   Azure CLI login, subscription
+    ├── terraform.sh               #   init, validate, plan, apply, destroy, output
+    ├── config-akv.sh              #   Key Vault post-deploy configuration
+    └── config-hsm.sh             #   HSM activation, role assignment, key creation
 ```
+
+---
 
 ## Configuration
 
@@ -130,43 +139,49 @@ All settings are driven by the `.env` file (copy from [.env.example](.env.exampl
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `AZ_LOCATION` | Yes | Azure region (e.g. `uksouth`) |
-| `ADBS_ADMIN_PASSWORD` | Yes | 12–30 chars, mixed case + number |
+| `AZ_LOCATION` | Yes | Azure region (e.g. `eastus`) |
+| `ORACLE_SSH_PUBLIC_KEY` | Yes (Exascale) | SSH public key for Exascale VM Cluster nodes |
 | `AZURE_SUBSCRIPTION_ID` | No | Uses active subscription if empty |
-| `DEPLOY_MANAGED_HSM` | No | `true` / `false` (default: `false`) |
-| `ENABLE_LOG_ANALYTICS` | No | Deploy Log Analytics (default: `true`) |
-| `ENABLE_EVENTHUB_LOGGING` | No | Deploy Event Hub (default: `false`) |
+| `KEY_VAULT_SKU` | No | `standard` (default) or `premium` (HSM-backed keys in AKV) |
+| `DEPLOY_MANAGED_HSM` | No | `true` / `false` — deploy Azure Managed HSM (default: `false`) |
+| `DEPLOY_EXASCALE` | No | `true` / `false` — Exascale vs ADB Serverless (default: `true`) |
+| `ENABLE_LOG_ANALYTICS` | No | Deploy Log Analytics workspace (default: `true`) |
+| `ENABLE_EVENTHUB_LOGGING` | No | Deploy Event Hub for log streaming (default: `false`) |
 
-ADBS-specific overrides (`ADBS_DISPLAY_NAME`, `ADBS_DB_VERSION`, `ADBS_WORKLOAD`, etc.) and Jumpbox VM settings are also configurable — see [.env.example](.env.example) for the full list.
+Exascale-specific overrides (`EXASCALE_VAULT_AZ`, `EXASCALE_CLUSTER_SHAPE`, `EXASCALE_CLUSTER_ENABLED_ECPU_COUNT`, etc.) are available — see [.env.example](.env.example) for the full list.
 
-## Scenarios at a Glance
+---
 
-| | Azure Key Vault | Azure Managed HSM |
-|---|---|---|
-| **FIPS Level** | 140-2 Level 2 | 140-3 Level 3 |
-| **Hardware** | Multi-tenant | Single-tenant dedicated |
-| **Key Types** | RSA, EC | RSA-HSM, EC-HSM, AES-HSM |
-| **Cost** | ~$0.03 / 10K ops | ~$3–5 / hour |
-| **Best For** | Most workloads | Regulated industries |
-| **Guide** | [Step-by-step.md](Step-by-step.md) | [Step-by-step.md § Section 9](Step-by-step.md#9-managed-hsm-specific-steps) |
+## Key Store Scenarios at a Glance
+
+| | AKV Standard | AKV Premium | Azure Managed HSM |
+|---|---|---|---|
+| **FIPS Level** | 140-2 Level 2 | 140-3 Level 3 | 140-3 Level 3 |
+| **Hardware** | Multi-tenant (software keys) | Multi-tenant (HSM-backed) | Single-tenant dedicated |
+| **Key type** | RSA | RSA-HSM | RSA-HSM |
+| **Cost** | ~$0.03 / 10K ops | ~20% more | ~$3–5 / hour |
+| **Deploy flag** | `-exascale` | `-exascale` + `KEY_VAULT_SKU=premium` | `-exascale-hsm` |
+| **Test plan section** | Scenario A | Scenario B | Scenario C |
+
+---
 
 ## Prerequisites
 
 - **Azure**: Subscription with Owner or Contributor role
 - **Oracle Database@Azure**: Active subscription ([overview](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/database-overview))
 - **Advanced Networking**: Enabled in your region ([network planning](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/oracle-database-network-plan#advanced-networking-features))
-- **Tools**: Azure CLI >= 2.79.0, Terraform >= 1.9.0, jq, Bash
+- **Tools**: Azure CLI >= 2.79.0, Terraform >= 1.9.0, `jq`, Bash, `openssl` (for MHSM security domain)
+- **SSH key pair**: RSA or Ed25519 key for Exascale VM Cluster node access
 
-> **Before starting**: Read [lessons-learned-adbs.md](lessons-learned-adbs.md) — it documents critical undocumented requirements (OCI DNS, Access Policies vs RBAC, Tenant ID pitfalls) that will save hours of troubleshooting.
+> **Before starting**: Read [lessons-learned-exascale.md](lessons-learned-exascale.md) — it documents critical undocumented requirements that will save hours of troubleshooting.
+
+---
 
 ## Official References
 
 - [Integrate Oracle Exadata Database@Azure with Azure Key Vault](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/manage-oracle-transparent-data-encryption-azure-key-vault) — Microsoft Learn
 - [Azure Key Vault integration architecture (CAF)](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/oracle-on-azure/oracle-azure-key-vault-integration-exadata) — Cloud Adoption Framework
-- [Oracle ADB Encryption Keys](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/autonomous-encrypt-set-rotate-keys.html) — Oracle Documentation
-- [Azure Key Vault Private Link](https://learn.microsoft.com/en-us/azure/key-vault/general/private-link-service) — Microsoft Learn
-- [Azure Managed HSM Private Link](https://learn.microsoft.com/en-us/azure/key-vault/managed-hsm/private-link) — Microsoft Learn
+- [Oracle Database@Azure overview](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/database-overview) — Microsoft Learn
+- [Oracle Exascale documentation](https://docs.oracle.com/en/engineered-systems/exadata/exascale/) — Oracle
 
-## License
 
-This project is provided as-is for testing and educational purposes. Review [Oracle licensing terms](https://www.oracle.com/cloud/azure/oracle-database-at-azure/), [Microsoft Azure terms](https://azure.microsoft.com/en-us/support/legal/), and your organization's compliance policies.

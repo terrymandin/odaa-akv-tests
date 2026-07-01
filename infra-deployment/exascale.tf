@@ -1,6 +1,6 @@
 # Oracle Exascale Infrastructure
 # Deploys Oracle Database@Azure Exascale (Storage Vault + Cloud VM Cluster)
-# Controlled by the deploy_exascale variable (false = ADBS, true = Exascale)
+# Controlled by the deploy_exascale variable (false = ADB Serverless, true = Exascale)
 #
 # Both resources use the AzAPI provider because azurerm does not expose
 # Oracle Exascale resource types in the current provider version.
@@ -40,7 +40,7 @@ resource "azapi_resource" "exascale_storage_vault" {
 
 # Oracle Exascale Cloud VM Cluster
 # Compute tier for Oracle Exascale; connects to the Storage Vault above
-# Uses the same delegated subnet as ADBS (Oracle.Database/networkAttachments)
+# Uses the Oracle-delegated subnet (Oracle.Database/networkAttachments)
 # SSH key-based authentication is required (no admin password)
 
 resource "azapi_resource" "exascale_vm_cluster" {

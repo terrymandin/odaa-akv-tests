@@ -3,7 +3,7 @@
 variable "location" {
   description = "Azure region for resource deployment"
   type        = string
-  default     = "uksouth"
+  default     = "eastus"
 
   validation {
     condition     = can(regex("^[a-z]+$", var.location))
@@ -46,9 +46,9 @@ variable "vnet_address_space_suffix" {
 }
 
 variable "adbs_subnet_name" {
-  description = "Name for the Oracle Autonomous Database subnet"
+  description = "Name for the Oracle-delegated (ExaDB) subnet"
   type        = string
-  default     = "adbs-subnet"
+  default     = "oracle-subnet"
 
   validation {
     condition     = can(regex("^[a-z0-9-]+$", var.adbs_subnet_name))
@@ -58,13 +58,13 @@ variable "adbs_subnet_name" {
 
 
 variable "adbs_subnet_prefix_length" {
-  description = "CIDR prefix length for ADBS subnet"
+  description = "CIDR prefix length for Oracle-delegated subnet"
   type        = number
   default     = 24
 
   validation {
     condition     = var.adbs_subnet_prefix_length >= 16 && var.adbs_subnet_prefix_length <= 29
-    error_message = "ADBS subnet prefix length must be between /16 and /29."
+    error_message = "Oracle subnet prefix length must be between /16 and /29."
   }
 }
 
@@ -79,7 +79,7 @@ variable "tags" {
   type        = map(string)
   default = {
     Environment = "Test"
-    Project     = "Oracle-ADB-AKV-PrivateEndpoint"
+    Project     = "Oracle-Exascale-AKV"
     ManagedBy   = "Terraform"
     Owner       = "Gerry"
   }
@@ -104,8 +104,19 @@ variable "deploy_managed_hsm" {
   default     = false
 }
 
+variable "key_vault_sku" {
+  description = "SKU tier for Azure Key Vault. Use 'standard' for software-protected keys or 'premium' for HSM-backed keys within an AKV vault. For a dedicated HSM, use deploy_managed_hsm instead."
+  type        = string
+  default     = "standard"
+
+  validation {
+    condition     = contains(["standard", "premium"], var.key_vault_sku)
+    error_message = "key_vault_sku must be 'standard' or 'premium'."
+  }
+}
+
 variable "deploy_exascale" {
-  description = "Deploy Oracle Exascale (Exascale Storage Vault + Cloud VM Cluster) instead of Autonomous Database Serverless. When true, ADBS will not be deployed."
+  description = "Deploy Oracle Exascale (Exascale Storage Vault + Cloud VM Cluster) instead of Autonomous Database Serverless. When true, ADB Serverless will not be deployed."
   type        = bool
   default     = false
 }

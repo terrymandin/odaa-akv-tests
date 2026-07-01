@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Oracle Autonomous Database + Azure Key Vault Deployment Orchestrator
+# Oracle Exascale + Azure Key Vault Deployment Orchestrator
 # ============================================================================
-# Purpose: Deploy Oracle ADBS with Azure Key Vault using Terraform
+# Purpose: Deploy Oracle Exascale with Azure Key Vault using Terraform
 # Version: 1.0.0
 # Date: 2026-02-02
 # ============================================================================
@@ -75,16 +75,17 @@ trap 'error_handler $? $LINENO "$BASH_COMMAND"' ERR
 usage() {
     cat <<EOF
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Oracle Autonomous Database + Azure Key Vault Deployment
+Oracle Exascale + Azure Key Vault Deployment
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Usage: $(basename "$0") [MODE] [OPTIONS]
 
 DEPLOYMENT MODES:
   (default)              Fresh deployment (uses DEPLOY_MANAGED_HSM from .env)
-  -akv, --key-vault      Fresh deployment with Azure Key Vault + ADBS
-  -hsm, --managed-hsm    Fresh deployment with Managed HSM + ADBS
+  -akv, --key-vault      Fresh deployment with Azure Key Vault + ADB Serverless
+  -hsm, --managed-hsm    Fresh deployment with Managed HSM + ADB Serverless
   -exascale              Fresh deployment with Azure Key Vault + Oracle Exascale
+  -exascale-hsm          Fresh deployment with Managed HSM + Oracle Exascale
   --only-configure-hsm   Configure Managed HSM only (requires deployed infra)
   --only-terraform, -tf  Infrastructure only (plan without apply)
   --create-tfvars, -tfv  Generate terraform.tfvars only
@@ -97,28 +98,35 @@ OPTIONS:
 
 EXAMPLES:
   # Fresh deployment (uses .env DEPLOY_MANAGED_HSM setting)
-  ./deploy-adbs-demo.sh
+  ./deploy-exascale-demo.sh
 
-  # Fresh deployment with Azure Key Vault + ADBS
-  ./deploy-adbs-demo.sh -akv
+  # Fresh deployment with Azure Key Vault + ADB Serverless
+  ./deploy-exascale-demo.sh -akv
 
-  # Fresh deployment with Managed HSM + ADBS
-  ./deploy-adbs-demo.sh -hsm
+  # Fresh deployment with Managed HSM + ADB Serverless
+  ./deploy-exascale-demo.sh -hsm
 
   # Fresh deployment with Azure Key Vault + Oracle Exascale
-  ./deploy-adbs-demo.sh -exascale
+  ./deploy-exascale-demo.sh -exascale
+
+  # Fresh deployment with Managed HSM + Oracle Exascale
+  ./deploy-exascale-demo.sh -exascale-hsm
+
+  # Fresh deployment with AKV Premium + Oracle Exascale
+  # Set KEY_VAULT_SKU=premium in .env, then:
+  ./deploy-exascale-demo.sh -exascale
 
   # Infrastructure only (review plan)
-  ./deploy-adbs-demo.sh --only-terraform
+  ./deploy-exascale-demo.sh --only-terraform
 
   # Configure Managed HSM only
-  ./deploy-adbs-demo.sh --only-configure-hsm
+  ./deploy-exascale-demo.sh --only-configure-hsm
 
   # Generate tfvars for manual execution
-  ./deploy-adbs-demo.sh --create-tfvars
+  ./deploy-exascale-demo.sh --create-tfvars
 
   # Destroy infrastructure
-  ./deploy-adbs-demo.sh --destroy
+  ./deploy-exascale-demo.sh --destroy
 
 CONFIGURATION:
   1. Copy .env.example to .env
@@ -127,15 +135,22 @@ CONFIGURATION:
 
 REQUIRED VARIABLES (.env):
   - AZ_LOCATION: Azure region
-  - ADBS_ADMIN_PASSWORD: Database admin password
+  - ORACLE_SSH_PUBLIC_KEY: SSH public key for Exascale VM Cluster nodes
+  - DEPLOY_EXASCALE: Set to true to enable Exascale mode (default: true)
+  (ADBS_ADMIN_PASSWORD is required instead when DEPLOY_EXASCALE=false)
 
 OPTIONAL VARIABLES:
   - AZURE_SUBSCRIPTION_ID: Azure subscription
-  - ADBS_DISPLAY_NAME: Database display name (ADBS mode)
+  - EXASCALE_VAULT_AZ: Availability zone for Exascale Storage Vault (default: 1)
+  - EXASCALE_VAULT_STORAGE_GBS: Storage Vault size in GiB (default: 300)
+  - EXASCALE_CLUSTER_SHAPE: VM Cluster shape (default: Exadata.X11M)
+  - EXASCALE_CLUSTER_ENABLED_ECPU_COUNT: ECPUs to enable (default: 4)
+  - EXASCALE_CLUSTER_TOTAL_ECPU_COUNT: Total ECPUs allocated (default: 4)
+  - EXASCALE_CLUSTER_NODE_COUNT: Number of cluster nodes (default: 2)
+  - EXASCALE_CLUSTER_LICENSE_MODEL: License model (default: LicenseIncluded)
   - ENABLE_LOG_ANALYTICS: Enable Log Analytics (true/false)
   - DEPLOY_MANAGED_HSM: Deploy Managed HSM (true/false)
-  - DEPLOY_EXASCALE: Deploy Oracle Exascale instead of ADBS (true/false)
-  - ORACLE_SSH_PUBLIC_KEY: SSH public key for Exascale VM Cluster (required for Exascale)
+  - KEY_VAULT_SKU: AKV tier — 'standard' (default) or 'premium'
 
 For more information, see .env.example
 
@@ -163,6 +178,12 @@ parse_arguments() {
             -exascale|--exascale)
                 DEPLOYMENT_MODE="fresh"
                 VAULT_TYPE="keyvault"
+                DEPLOY_EXASCALE="true"
+                shift
+                ;;
+            -exascale-hsm|--exascale-hsm)
+                DEPLOYMENT_MODE="fresh"
+                VAULT_TYPE="managedhsm"
                 DEPLOY_EXASCALE="true"
                 shift
                 ;;
@@ -265,24 +286,26 @@ validate_configuration() {
         fi
         export TF_VAR_oracle_ssh_public_key="${ssh_key}"
     fi
+
+    # Export Key Vault SKU (standard or premium)
+    export TF_VAR_key_vault_sku="${KEY_VAULT_SKU:-standard}"
     echo ""
     
     # Validate required variables based on mode
     case "${DEPLOYMENT_MODE}" in
-        fresh|terraform-only)
+        fresh|terraform-only|create-tfvars-only)
             validation_check_required_vars "${ENV_FILE}" \
-                "AZ_LOCATION" \
-                "ADBS_ADMIN_PASSWORD"
+                "AZ_LOCATION"
+            # Password only required for ADB Serverless; Exascale uses SSH key auth
+            if [[ "${TF_VAR_deploy_exascale:-false}" != "true" ]]; then
+                validation_check_required_vars "${ENV_FILE}" \
+                    "ADBS_ADMIN_PASSWORD"
+            fi
             ;;
         configure-hsm-only)
             # Only need location for HSM configuration
             validation_check_required_vars "${ENV_FILE}" \
                 "AZ_LOCATION"
-            ;;
-        create-tfvars-only)
-            validation_check_required_vars "${ENV_FILE}" \
-                "AZ_LOCATION" \
-                "ADBS_ADMIN_PASSWORD"
             ;;
         destroy)
             # Minimal validation for destroy mode
@@ -291,8 +314,8 @@ validate_configuration() {
             ;;
     esac
     
-    # Validate password format (if required)
-    if [[ "${DEPLOYMENT_MODE}" != "destroy" && "${DEPLOYMENT_MODE}" != "configure-hsm-only" ]]; then
+    # Validate ADB Serverless password format (ADB Serverless mode only)
+    if [[ "${DEPLOYMENT_MODE}" != "destroy" && "${DEPLOYMENT_MODE}" != "configure-hsm-only" && "${TF_VAR_deploy_exascale:-false}" != "true" ]]; then
         if [[ ${#ADBS_ADMIN_PASSWORD} -lt 12 || ${#ADBS_ADMIN_PASSWORD} -gt 30 ]]; then
             error_exit "ADBS_ADMIN_PASSWORD must be 12-30 characters"
         fi
@@ -331,7 +354,7 @@ display_configuration() {
     if [[ "${TF_VAR_deploy_exascale:-false}" == "true" ]]; then
         print_kv "Oracle DB Type" "Exascale (Storage Vault + VM Cluster)"
     else
-        print_kv "Oracle DB Type" "Autonomous Database Serverless (ADBS)"
+        print_kv "Oracle DB Type" "Oracle Exascale"
     fi
 
     # Show vault type selection
@@ -357,14 +380,17 @@ display_configuration() {
     if [[ "${TF_VAR_deploy_exascale:-false}" == "true" ]]; then
         echo ""
         print_info "Oracle Exascale Configuration:"
-        print_kv "  Availability Zone" "${EXASCALE_AZ:-1}"
-        print_kv "  Storage (GiB)" "${EXASCALE_STORAGE_GBS:-300}"
-        print_kv "  CPU Cores" "${EXASCALE_CPU_CORES:-4}"
-        print_kv "  GI Version" "${EXASCALE_GI_VERSION:-19.0.0.0.0}"
-        print_kv "  SSH Key Set" "$([ -n "${TF_VAR_oracle_ssh_public_key:-}" ] && echo 'yes' || echo 'no')"
+        print_kv "  Availability Zone"     "${EXASCALE_VAULT_AZ:-1}"
+        print_kv "  Vault Storage (GiB)"   "${EXASCALE_VAULT_STORAGE_GBS:-300}"
+        print_kv "  Shape"                 "${EXASCALE_CLUSTER_SHAPE:-Exadata.X11M}"
+        print_kv "  Enabled ECPUs"         "${EXASCALE_CLUSTER_ENABLED_ECPU_COUNT:-4}"
+        print_kv "  Total ECPUs"           "${EXASCALE_CLUSTER_TOTAL_ECPU_COUNT:-4}"
+        print_kv "  Node Count"            "${EXASCALE_CLUSTER_NODE_COUNT:-2}"
+        print_kv "  License Model"         "${EXASCALE_CLUSTER_LICENSE_MODEL:-LicenseIncluded}"
+        print_kv "  SSH Key Set"           "$([ -n "${TF_VAR_oracle_ssh_public_key:-}" ] && echo 'yes' || echo 'no')"
     elif [[ -n "${ADBS_DISPLAY_NAME:-}" ]]; then
         echo ""
-        print_info "Oracle ADBS Custom Configuration:"
+        print_info "Oracle ADB Serverless Configuration (legacy):"
         print_kv "  Display Name" "${ADBS_DISPLAY_NAME}"
         print_kv "  DB Version" "${ADBS_DB_VERSION:-19c}"
         print_kv "  Workload" "${ADBS_WORKLOAD:-OLTP}"
@@ -421,7 +447,7 @@ configure_managed_hsm() {
         
         if [[ -z "${hsm_list}" || "${hsm_list}" == "[]" ]]; then
             print_error "No Managed HSM found in location: ${AZ_LOCATION}"
-            print_info "Deploy infrastructure first: ./deploy-adbs-demo.sh"
+            print_info "Deploy infrastructure first: ./deploy-exascale-demo.sh"
             exit 1
         fi
         
@@ -487,8 +513,8 @@ configure_managed_hsm() {
     echo ""
     
     print_info "Next Steps:"
-    echo "  1. Keys are ready for Oracle ADBS encryption"
-    echo "  2. Configure Oracle ADBS to use HSM keys"
+    echo "  1. Keys are ready for Oracle Exascale encryption"
+    echo "  2. Configure Oracle Exascale to use HSM keys"
     echo "  3. List all keys: hsm_list_keys \"${hsm_name}\""
     echo ""
 }
@@ -567,7 +593,7 @@ display_summary() {
         print_kv "Exascale Storage Vault" "${vault_name}"
     else
         local adbs_name=$(terraform_output "${tf_dir}" "autonomous_database" "json" | jq -r '.name' 2>/dev/null || echo "N/A")
-        print_kv "ADBS Name" "${adbs_name}"
+        print_kv "ADB Name" "${adbs_name}"
     fi
 
     echo ""
@@ -583,9 +609,9 @@ display_summary() {
         echo "  5. Configure TDE master key to use AKV (ADMINISTER KEY MANAGEMENT)"
         echo "  6. Validate encrypted tablespaces and AKV connectivity"
     else
-        print_info "Next Steps (ADBS + AKV):"
+        print_info "Next Steps (Exascale + AKV):"
         echo "  1. Connect to jumpbox VM: ${vm_fqdn}"
-        echo "  2. Download Oracle ADBS wallet from Azure Portal"
+        echo "  2. Download Oracle ADB Serverless wallet from Azure Portal"
         echo "  3. Configure Oracle client tools"
         echo "  4. Test database connectivity"
     fi
@@ -761,3 +787,7 @@ EOF
 # ============================================================================
 
 main "$@"
+
+
+
+

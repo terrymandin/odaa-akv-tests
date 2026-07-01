@@ -12,7 +12,7 @@
 
 # # NAT Gateway for outbound connectivity
 # resource "azurerm_nat_gateway" "main" {
-#   name                = "natgw-adbs-${var.location}-${random_integer.suffix.result}"
+#   name                = "natgw-exascale-${var.location}-${random_integer.suffix.result}"
 #   location            = azurerm_resource_group.main.location
 #   resource_group_name = azurerm_resource_group.main.name
 #   sku_name            = "Standard"
@@ -43,3 +43,5 @@
 #   subnet_id      = azurerm_subnet.vm_subnet.id
 #   nat_gateway_id = azurerm_nat_gateway.main.id
 # }
+
+

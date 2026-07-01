@@ -1,6 +1,6 @@
 # 🎓 Lessons Learned: Oracle Autonomous Database on Azure with Customer-Managed Encryption Keys
 
-**Project**: Integration of Oracle ADBS with Azure Key Vault for CMEK  
+**Project**: Integration of Oracle Exascale with Azure Key Vault for CMEK  
 **Duration**: October 2025 - February 2026  
 **Test Iterations**: Test 2, Test 3, Test 4 (UK South region)  
 **Complexity Level**: Advanced Multi-Cloud Integration
@@ -142,10 +142,10 @@ Manually remove "www." from the URL:
 
 ## 3. Authentication and Authorization Pitfalls
 
-### 3.1 Azure RBAC Roles Don't Work for ADBS
+### 3.1 Azure RBAC Roles Don't Work for Oracle Database@Azure
 
 **The Finding:**
-Assigning `Key Vault Crypto Officer` or any Azure IAM role to the ADBS Service Principal via RBAC **does not work**.
+Assigning `Key Vault Crypto Officer` or any Azure IAM role to the Oracle Database@Azure Service Principal via RBAC **does not work**.
 
 **Error Message:**
 ```
@@ -153,12 +153,12 @@ The user, group or application 'appid=...' does not have keys list permission on
 ```
 
 **Root Cause:**
-ADBS requires **Access Policies** (vault-level permissions), not RBAC assignments.
+Oracle Database@Azure requires **Access Policies** (vault-level permissions), not RBAC assignments.
 
 **The Solution:**
 - Navigate to Key Vault → Access Policies → Create
 - Grant: Get, List, Wrap Key, Unwrap Key, Sign, Verify
-- Assign to the ADBS Service Principal (by Application ID)
+- Assign to the Oracle Database@Azure Service Principal (by Application ID)
 
 **Why This Matters:**
 Many Azure admins default to RBAC. This cost us hours of troubleshooting.
@@ -244,7 +244,7 @@ Test with Standard Key Vault first, then move to HSM once everything works.
 ### 6.1 24-Hour Rate Limit on Key Changes
 
 **The Limitation:**
-Oracle enforces **maximum 2 key changes per 24 hours** on an ADBS instance.
+Oracle enforces **maximum 2 key changes per 24 hours** per database instance.
 
 **Error Message:**
 ```
@@ -255,7 +255,7 @@ two times in a 24-hour period. Try again later.
 **Impact:**
 - Blocks rapid testing of different key types
 - Must plan key rotation tests across multiple days
-- Or provision separate ADBS instances per key type
+- Or provision separate database instances per key type
 
 **Why It Exists:**
 Protection against accidental rapid key changes that could cause data access issues.
@@ -278,7 +278,7 @@ Protection against accidental rapid key changes that could cause data access iss
 ### 6.3 Private Endpoint URL for SQL Developer
 
 **The Finding:**
-When ADBS has `Public Access: Disabled`, the ORDS SQL Developer interface is only accessible via:
+When the database has `Public Access: Disabled`, the ORDS SQL Developer interface is only accessible via:
 - **Private Endpoint URL** (from OCI Console)
 - Must access from a VM within the VNet (e.g., Jump Box)
 
@@ -308,7 +308,7 @@ Use **RSA-4096** for production environments for maximum compatibility and secur
 **Not Tested:**
 - RSA-HSM variants
 - Software-protected EC keys
-- AES-256 (HSM only, ADBS support unclear)
+- AES-256 (HSM only; verify Exascale support)
 
 ---
 
@@ -323,7 +323,7 @@ Use **RSA-4096** for production environments for maximum compatibility and secur
 | **Service Principal Behavior** | Doesn't warn about proliferation | Azure AD clutter |
 | **Tenant ID vs Subscription ID** | Uses wrong ID in examples | OAuth flow fails |
 | **RBAC vs Access Policies** | Doesn't distinguish | Hours of troubleshooting |
-| **Managed HSM Local RBAC** | Not documented for ADBS use case | Permission denied errors |
+| **Managed HSM Local RBAC** | Not documented for Oracle Database@Azure use case | Permission denied errors |
 | **Network ACL for HSM** | Missing privilege requirements | Subtle connection failures |
 | **24-Hour Rate Limit** | Not mentioned in key rotation docs | Blocked testing |
 | **`route_outbound_connections`** | Missing from early docs | Inconsistent behavior |
@@ -487,7 +487,7 @@ WHERE property_name = 'ROUTE_OUTBOUND_CONNECTIONS';
 **For detailed implementation procedures**: [Step-by-step.md](Step-by-step.md)
 
 **Official Documentation:**
-- [Oracle ADBS Security](https://docs.oracle.com/en-us/iaas/Content/database-at-azure/azusr-security-protect-autonomous-ai-database.html)
+- [Oracle Exascale Security](https://docs.oracle.com/en-us/iaas/Content/database-at-azure/azusr-security-protect-autonomous-ai-database.html)
 - [Microsoft: TDE with Azure Key Vault](https://learn.microsoft.com/en-us/azure/oracle/oracle-db/manage-oracle-transparent-data-encryption-azure-key-vault)
 
 **Related Files:**
@@ -501,3 +501,5 @@ WHERE property_name = 'ROUTE_OUTBOUND_CONNECTIONS';
 **Last Updated**: February 17, 2026  
 **Test Environment**: Oracle Database@Azure, UK South region  
 **Iterations**: 3 complete test cycles
+
+

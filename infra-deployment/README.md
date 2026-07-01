@@ -18,7 +18,7 @@ This infrastructure automates the Azure resource deployment for Oracle ADBS with
 ## Current Resources
 
 **Core Infrastructure**:
-- **Resource Group**: Container for all Azure resources (`rg-adbs-{location}-{suffix}`)
+- **Resource Group**: Container for all Azure resources (`rg-exascale-{location}-{suffix}`)
 - **Virtual Network**: VNet with random address space (`10.{random}.0.0/16`)
 - **Subnets**: 
   - ADBS Subnet (delegated to Oracle): `10.XXX.1.0/24`
@@ -207,7 +207,7 @@ terraform init#### Optional - Resource Configuration
 
 ### 3. Review and Apply|----------|-------------|---------|---------|
 
-| `location` | Azure region for deployment | `uksouth` | Any Azure region |
+| `location` | Azure region for deployment | `eastus` | Any Azure region |
 
 ```bash| `enable_logging` | Enable Log Analytics and monitoring | `true` | `true`, `false` |
 
@@ -275,7 +275,7 @@ export TF_VAR_enable_log_analytics_logging=false
 
 |----------|-------------|---------|---------|```
 
-| `location` | Azure region | `uksouth` | Any Azure region |
+| `location` | Azure region | `eastus` | Any Azure region |
 
 | `vnet_octet_min` | Min value for VNet second octet | `101` | 0-255 |##### Event Hub Logging
 
@@ -533,7 +533,7 @@ terraform output- **Prefix**: Resource type abbreviation (e.g., `rg` for Resourc
 
 - **Owner**: Owner identifier (default: `gerry`)
 
-# Specific output in JSON- **Location**: Azure region short name (e.g., `uksouth`)
+# Specific output in JSON- **Location**: Azure region short name (e.g., `eastus`)
 
 terraform output -json useful_info | jq- **Random Suffix**: 3-digit random number (100-999)
 
@@ -541,11 +541,11 @@ terraform output -json useful_info | jq- **Random Suffix**: 3-digit random numbe
 
 # Get Key Vault URIExamples:
 
-terraform output -json useful_info | jq -r '.value.akv_uri'- Resource Group: `rg-gerry-uksouth-456`
+terraform output -json useful_info | jq -r '.value.akv_uri'- Resource Group: `rg-gerry-eastus-456`
 
-- Virtual Network: `vnet-gerry-uksouth-456`
+- Virtual Network: `vnet-gerry-eastus-456`
 
-# Get VM RDP connection- Autonomous Database: `adb-gerry-uksouth-456`
+# Get VM RDP connection- Autonomous Database: `adb-gerry-eastus-456`
 
 terraform output -json useful_info | jq -r '.value.vm_fqdn'
 
@@ -743,7 +743,7 @@ Refer to `../Step-by-step.md#3-oci-dns-configuration-manual` for detailed DNS co
 
 # View logs
 
-az monitor activity-log list --resource-group rg-gerry-uksouth-XXX
+az monitor activity-log list --resource-group rg-gerry-eastus-XXX
 
 ### 4. Test Key Vault Connectivity```
 
@@ -1042,3 +1042,7 @@ terraform destroy
 ## License
 
 This Terraform configuration is provided as-is for demonstration and testing purposes.
+
+
+
+

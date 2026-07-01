@@ -2,7 +2,7 @@
 resource "azurerm_key_vault_managed_hardware_security_module" "mhsm" {
   count = var.deploy_managed_hsm ? 1 : 0
 
-  name                = "mhsm-adbs-${random_integer.suffix.result}"
+  name                = "mhsm-exascale-${random_integer.suffix.result}"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   sku_name            = "Standard_B1"

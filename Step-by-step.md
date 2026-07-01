@@ -29,10 +29,10 @@ This guide follows a two-phase workflow:
 
 | Phase | Steps | Method | Tool |
 |-------|-------|--------|------|
-| **Phase 1: Infrastructure** | Sections 1–2 | **Automated** | `deploy-adbs-demo.sh` (Terraform) |
+| **Phase 1: Infrastructure** | Sections 1–2 | **Automated** | `deploy-exascale-demo.sh` (Terraform) |
 | **Phase 2: Configuration** | Sections 3–6 | **Manual** | OCI Console, SQL Developer Web, Azure Portal |
 
-Phase 1 deploys all Azure resources automatically. Phase 2 configures the OCI-side DNS, OAuth, network ACLs, and encryption keys — these require access to the OCI Console and the ADBS SQL Developer Web, so they cannot be automated with Azure Terraform.
+Phase 1 deploys all Azure resources automatically. Phase 2 configures the OCI-side DNS, OAuth, network ACLs, and encryption keys — these require access to the OCI Console and the Oracle Database SQL Developer Web, so they cannot be automated with Azure Terraform.
 
 ---
 
@@ -44,11 +44,11 @@ Phase 1 deploys all Azure resources automatically. Phase 2 configures the OCI-si
 
 | Resource Type | Example Name | How to Get Your Value |
 |--------------|--------------|----------------------|
-| **Resource Group** | `rg-adbs-uksouth-982` | `terraform output -json resource_group \| jq -r '.name'` |
-| **Key Vault** | `adbs-kv-982` | `terraform output -json useful_info \| jq -r '.akv_name'` |
-| **HSM** | `mhsm-adbs-142a` | `terraform output -json useful_info \| jq -r '.mhsm_uri'` |
+| **Resource Group** | `rg-exascale-eastus-982` | `terraform output -json resource_group \| jq -r '.name'` |
+| **Key Vault** | `exascale-kv-982` | `terraform output -json useful_info \| jq -r '.akv_name'` |
+| **HSM** | `mhsm-exascale-142a` | `terraform output -json useful_info \| jq -r '.mhsm_uri'` |
 | **ADBS** | `adbsakvtest982` | `terraform output -json autonomous_database \| jq -r '.name'` |
-| **VNET** | `vnet-adbs-uksouth-982` | `terraform output -json useful_info \| jq -r '.vnet_name'` |
+| **VNET** | `vnet-exascale-eastus-982` | `terraform output -json useful_info \| jq -r '.vnet_name'` |
 | **Private Endpoint IP** | `10.115.2.4` | `terraform output -json useful_info \| jq -r '.akv_private_ip_address'` |
 | **VCN Name** | `VCN-multicloudnetworklink<timestamp>` | OCI Console → ADBS → Network Information |
 | **Tenant ID** | `cacf72a7-xxxx-...` | `terraform output -json useful_info \| jq -r '.tenant_id'` |
@@ -83,7 +83,7 @@ az oracle-database autonomous-database list-available-regions
 
 ### 1.2 Tooling Prerequisites
 
-The infrastructure deployment is **fully automated** using an orchestrator script (`deploy-adbs-demo.sh`) that wraps Terraform. Ensure the following tools are installed:
+The infrastructure deployment is **fully automated** using an orchestrator script (`deploy-exascale-demo.sh`) that wraps Terraform. Ensure the following tools are installed:
 
 | Tool | Minimum Version | Purpose |
 |------|----------------|---------|
@@ -108,7 +108,7 @@ cp .env.example .env
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `AZ_LOCATION` | Azure region | `uksouth` |
+| `AZ_LOCATION` | Azure region | `eastus` |
 | `ADBS_ADMIN_PASSWORD` | ADBS admin password (12-30 chars, uppercase + lowercase + number) | `SecureP@ssw0rd123` |
 
 **Optional variables (with defaults):**
@@ -151,7 +151,7 @@ The orchestrator provisions all of the following in a single run:
 
 | Resource | Description |
 |----------|-------------|
-| Resource Group | `rg-adbs-<location>-<random>` |
+| Resource Group | `rg-exascale-<location>-<random>` |
 | Virtual Network | With subnets for ADBS, Private Endpoints, NAT Gateway, VMs, Firewall |
 | Oracle ADBS | Autonomous Database Serverless with Advanced Networking |
 | Azure Key Vault | Standard tier, purge-protection enabled, public access initially on |
@@ -159,7 +159,7 @@ The orchestrator provisions all of the following in a single run:
 | Key Vault Private Endpoint | In the Private Endpoints subnet |
 | Private DNS Zone | `privatelink.vaultcore.azure.net` linked to VNet |
 | Managed HSM | *(Optional, if `DEPLOY_MANAGED_HSM=true`)* |
-| Jumpbox VM | Windows VM for accessing ADBS SQL Developer Web |
+| Jumpbox VM | Windows VM for accessing Oracle Database SQL Developer Web |
 | Azure Firewall | With policies for outbound traffic control |
 | NAT Gateway | For outbound connectivity |
 | Log Analytics | *(Optional, if `ENABLE_LOG_ANALYTICS=true`)* |
@@ -169,13 +169,13 @@ The orchestrator provisions all of the following in a single run:
 
 ```bash
 # Fresh deployment with Azure Key Vault
-./deploy-adbs-demo.sh -akv
+./deploy-exascale-demo.sh -akv
 
 # Fresh deployment with Managed HSM
-./deploy-adbs-demo.sh -hsm
+./deploy-exascale-demo.sh -hsm
 
 # Or use the default (reads DEPLOY_MANAGED_HSM from .env)
-./deploy-adbs-demo.sh
+./deploy-exascale-demo.sh
 ```
 
 ⏱️ **Expected Time**: 30-60 minutes (ADBS provisioning takes 15-30 minutes)
@@ -208,7 +208,7 @@ terraform output -json useful_info | jq '.'
 
 | Output | What It Is | Used In |
 |--------|-----------|----------|
-| `akv_name` | Key Vault name (e.g., `adbs-kv-982`) | Sections 3-6 |
+| `akv_name` | Key Vault name (e.g., `exascale-kv-982`) | Sections 3-6 |
 | `akv_private_ip_address` | Private Endpoint IP | Section 3 (OCI DNS) |
 | `akv_uri` | Key Vault URI | Section 6 (CMEK) |
 | `tenant_id` | Azure AD Tenant ID | Section 4 (OAuth) |
@@ -224,13 +224,13 @@ Terraform creates multiple encryption keys for testing different types:
 
 | Key Name | Type | Size/Curve | Confirmed Working |
 |----------|------|-----------|--------------------|
-| `adbs-encryption-rsa-2048` | RSA | 2048 | ✅ Yes |
-| `adbs-encryption-rsa-3072` | RSA | 3072 | ✅ Yes |
-| `adbs-encryption-rsa-4096` | RSA | 4096 | ✅ Yes (Production) |
-| `adbs-encryption-ec-p256` | EC | P-256 | ✅ Yes |
-| `adbs-encryption-ec-p256k` | EC | P-256K | ✅ Yes |
-| `adbs-encryption-ec-p384` | EC | P-384 | ✅ Yes |
-| `adbs-encryption-ec-p521` | EC | P-521 | ✅ Yes |
+| `exascale-encryption-rsa-2048` | RSA | 2048 | ✅ Yes |
+| `exascale-encryption-rsa-3072` | RSA | 3072 | ✅ Yes |
+| `exascale-encryption-rsa-4096` | RSA | 4096 | ✅ Yes (Production) |
+| `exascale-encryption-ec-p256` | EC | P-256 | ✅ Yes |
+| `exascale-encryption-ec-p256k` | EC | P-256K | ✅ Yes |
+| `exascale-encryption-ec-p384` | EC | P-384 | ✅ Yes |
+| `exascale-encryption-ec-p521` | EC | P-521 | ✅ Yes |
 
 ### 2.4 Verify Deployment (Optional)
 
@@ -260,7 +260,7 @@ az network private-endpoint list \
 > **⚠️ This step is manual.** OCI DNS cannot be configured through Azure Terraform. You must create the Private DNS Zones and A records in the OCI Console.
 >
 > You will need the following values from the Terraform output (Section 2.2):
-> - `akv_name` — Your Key Vault name (e.g., `adbs-kv-982`)
+> - `akv_name` — Your Key Vault name (e.g., `exascale-kv-982`)
 > - `akv_private_ip_address` — Your Private Endpoint IP (e.g., `10.115.2.4`)
 > - If using Managed HSM: `mhsm_uri` — Your HSM URI
 
@@ -311,14 +311,14 @@ On the ADBS details page, find:
 
 #### Add A Records to Both Zones:
 
-> **⚠️ CRITICAL**: Replace `adbs-kv-982` with YOUR Key Vault name and `10.115.2.4` with YOUR actual Private Endpoint IP.
+> **⚠️ CRITICAL**: Replace `exascale-kv-982` with YOUR Key Vault name and `10.115.2.4` with YOUR actual Private Endpoint IP.
 
 **For each zone, add an A record:**
 
 1. Click on the zone name
 2. Click **Add Record**
 3. Fill in:
-   - **Name**: `adbs-kv-982` ← Replace with **YOUR** Key Vault name (only the name part, no .vault.azure.net suffix)
+   - **Name**: `exascale-kv-982` ← Replace with **YOUR** Key Vault name (only the name part, no .vault.azure.net suffix)
    - **Type**: A - IPv4 address
    - **TTL**: 300
    - **Address**: `10.115.2.4` ← Replace with **YOUR** Private Endpoint IP from Section 2.4
@@ -333,9 +333,9 @@ On the ADBS details page, find:
 
 Private View: VCN-multicloudnetworklink20250605145841  ← YOUR VCN name will be different
 ├── Private Zone: privatelink.vaultcore.azure.net
-│   └── A Record: adbs-kv-982 → 10.115.2.4  ← YOUR Key Vault name and YOUR PE IP
+│   └── A Record: exascale-kv-982 → 10.115.2.4  ← YOUR Key Vault name and YOUR PE IP
 └── Private Zone: vault.azure.net
-    └── A Record: adbs-kv-982 → 10.115.2.4  ← YOUR Key Vault name and YOUR PE IP
+    └── A Record: exascale-kv-982 → 10.115.2.4  ← YOUR Key Vault name and YOUR PE IP
 ```
 
 > **⚠️ Note**: All names and IPs above are examples from our test environment. Use YOUR actual values.
@@ -453,7 +453,7 @@ OBJECT_ID=$(az ad sp show --id $APP_ID --query id -o tsv)
 
 # Set access policy
 az keyvault set-policy \
-  --name adbs-kv-982 \
+  --name exascale-kv-982 \
   --object-id $OBJECT_ID \
   --key-permissions get list wrapKey unwrapKey sign verify
 ```
@@ -480,7 +480,7 @@ AZURE     ENABLED   ADMIN           17-FEB-26
 
 ### 5.1 Add Network ACL for Standard Key Vault
 
-> **Note**: Replace `adbs-kv-982` with your actual Key Vault name from Terraform output (`akv_name`).
+> **Note**: Replace `exascale-kv-982` with your actual Key Vault name from Terraform output (`akv_name`).
 
 ```sql
 -- Connect as ADMIN
@@ -488,7 +488,7 @@ AZURE     ENABLED   ADMIN           17-FEB-26
 -- Add network ACL for Key Vault access
 BEGIN
   DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
-    host        => 'adbs-kv-982.vault.azure.net',
+    host        => 'exascale-kv-982.vault.azure.net',
     LOWER_PORT  => 443,
     UPPER_PORT  => 443,
     ACE         => XS$ACE_TYPE(
@@ -514,7 +514,7 @@ WHERE host LIKE '%vault.azure.net%';
 ```
 HOST                            LOWER_PORT  UPPER_PORT  ACL
 ------------------------------  ----------  ----------  -------------------
-adbs-kv-982.vault.azure.net     443         443         ACL$...
+exascale-kv-982.vault.azure.net     443         443         ACL$...
 ```
 
 ---
@@ -523,12 +523,12 @@ adbs-kv-982.vault.azure.net     443         443         ACL$...
 
 ### 6.1 Test DNS Resolution (Critical Pre-Flight Check)
 
-> **⚠️ Note**: Replace `adbs-kv-982` with your actual Key Vault name from Terraform output (`akv_name`).
+> **⚠️ Note**: Replace `exascale-kv-982` with your actual Key Vault name from Terraform output (`akv_name`).
 
 ```sql
 -- Verify DNS resolves to PRIVATE IP
-SELECT utl_inaddr.get_host_address('adbs-kv-982.vault.azure.net') FROM dual;
--- Replace 'adbs-kv-982' with YOUR Key Vault name
+SELECT utl_inaddr.get_host_address('exascale-kv-982.vault.azure.net') FROM dual;
+-- Replace 'exascale-kv-982' with YOUR Key Vault name
 ```
 
 **Expected Output**: Your Private Endpoint IP (e.g., `10.115.2.4`)
@@ -547,7 +547,7 @@ BEGIN
     name  VARCHAR2(256);
     value VARCHAR2(1024);
   BEGIN
-    req := UTL_HTTP.BEGIN_REQUEST('https://adbs-kv-982.vault.azure.net/healthstatus');
+    req := UTL_HTTP.BEGIN_REQUEST('https://exascale-kv-982.vault.azure.net/healthstatus');
     UTL_HTTP.SET_HEADER(req, 'User-Agent', 'Mozilla/4.0');
     resp := UTL_HTTP.GET_RESPONSE(req);
     
@@ -591,7 +591,7 @@ x-ms-keyvault-network-info: conn_type=PrivateLink;addr=10.115.1.116;...
 
 ### 6.3 Configure Customer-Managed Key
 
-> **Note**: Use your Key Vault URI from `terraform output -json useful_info | jq -r '.akv_uri'` and one of the key names created by Terraform (see Section 2.3). For example: `adbs-encryption-rsa-4096`.
+> **Note**: Use your Key Vault URI from `terraform output -json useful_info | jq -r '.akv_uri'` and one of the key names created by Terraform (see Section 2.3). For example: `exascale-encryption-rsa-4096`.
 
 **Via OCI Console:**
 
@@ -599,8 +599,8 @@ x-ms-keyvault-network-info: conn_type=PrivateLink;addr=10.115.1.116;...
 2. Click **More Actions** → **Manage customer-managed keys**
 3. Configure:
    - **Vault Type**: Azure Key Vault
-   - **Vault URI**: Your Key Vault URI (e.g., `https://adbs-kv-982.vault.azure.net/`)
-   - **Key Name**: One of the keys from Section 2.3 (e.g., `adbs-encryption-rsa-4096`)
+   - **Vault URI**: Your Key Vault URI (e.g., `https://exascale-kv-982.vault.azure.net/`)
+   - **Key Name**: One of the keys from Section 2.3 (e.g., `exascale-encryption-rsa-4096`)
    - **Key Version**: Leave empty (uses latest version automatically)
    - **Cloud Provider**: AZURE
 4. Click **Save Changes**
@@ -618,7 +618,7 @@ AKV_URI=$(cd infra-deployment && terraform output -json useful_info | jq -r '.ak
 oci db autonomous-database update \
   --autonomous-database-id $ADBS_OCID \
   --customer-contacts '[{"email":"admin@example.com"}]' \
-  --kms-key-id "${AKV_URI}keys/adbs-encryption-rsa-4096"
+  --kms-key-id "${AKV_URI}keys/exascale-encryption-rsa-4096"
 ```
 
 ⏱️ **Expected Time**: 10-30 minutes for re-encryption
@@ -667,7 +667,7 @@ SET LINESIZE 200
 SET PAGESIZE 100
 
 -- 1. Verify DNS resolution
-SELECT utl_inaddr.get_host_address('adbs-kv-982.vault.azure.net') FROM dual;
+SELECT utl_inaddr.get_host_address('exascale-kv-982.vault.azure.net') FROM dual;
 -- Expected: Your Private Endpoint IP (10.115.2.4)
 
 -- 2. Check encryption wallet status
@@ -747,7 +747,7 @@ DROP TABLESPACE test_encrypted_tbs INCLUDING CONTENTS AND DATAFILES;
 
 ```kql
 AzureDiagnostics
-| where Resource == "ADBS-KV-982"                    // Your Key Vault name (uppercase)
+| where Resource == "exascale-kv-982"                    // Your Key Vault name (uppercase)
 | where CallerIPAddress == "10.115.1.116"             // Your ADBS private IP
 | where OperationName in ("VaultGet", "WrapKey", "UnwrapKey")
 | project TimeGenerated, OperationName, CallerIPAddress, ResultSignature, ResultDescription
@@ -769,7 +769,7 @@ AzureDiagnostics
 
 **Diagnosis:**
 ```sql
-SELECT utl_inaddr.get_host_address('adbs-kv-982.vault.azure.net') FROM dual;
+SELECT utl_inaddr.get_host_address('exascale-kv-982.vault.azure.net') FROM dual;
 -- If returns 104.x.x.x or similar public IP
 ```
 
@@ -793,7 +793,7 @@ SELECT utl_inaddr.get_host_address('adbs-kv-982.vault.azure.net') FROM dual;
 4. **Verify Private Endpoint:**
    ```bash
    az network private-endpoint show \
-     --resource-group rg-oracle-prod-uksouth \
+     --resource-group rg-oracle-prod-eastus \
      --name pe-kv-adbs \
      --query 'customDnsConfigs[0].ipAddresses[0]' \
      -o tsv
@@ -814,7 +814,7 @@ WHERE host LIKE '%vault.azure.net%';
 -- If empty, add ACL (see Section 5.1)
 
 -- If ACL exists but still fails, check exact hostname
--- Must match EXACTLY: adbs-kv-982.vault.azure.net
+-- Must match EXACTLY: exascale-kv-982.vault.azure.net
 ```
 
 ### 8.3 OAuth and Authentication Issues
@@ -903,7 +903,7 @@ FROM V$ENCRYPTION_WALLET;
 **Diagnosis:**
 ```sql
 -- DNS resolves to private IP (good)
-SELECT utl_inaddr.get_host_address('adbs-kv-982.vault.azure.net') FROM dual;
+SELECT utl_inaddr.get_host_address('exascale-kv-982.vault.azure.net') FROM dual;
 -- Returns: 10.115.2.4
 
 -- But connectivity test fails
@@ -967,12 +967,12 @@ END;
 
 ### 9.0 Activate and Configure HSM (Automated)
 
-If you deployed with `./deploy-adbs-demo.sh -hsm`, HSM configuration runs automatically after Terraform.
+If you deployed with `./deploy-exascale-demo.sh -hsm`, HSM configuration runs automatically after Terraform.
 
 To configure an already-deployed HSM separately:
 
 ```bash
-./deploy-adbs-demo.sh --only-configure-hsm
+./deploy-exascale-demo.sh --only-configure-hsm
 ```
 
 This will:
@@ -992,9 +992,9 @@ In addition to standard Key Vault zones, add:
 Private View: VCN-multicloudnetworklink20250605145841
 ├── (Existing zones for standard Key Vault)
 ├── Private Zone: privatelink.managedhsm.azure.net
-│   └── A Record: mhsm-adbs-142a.managedhsm.azure.net → 10.106.2.5
+│   └── A Record: mhsm-exascale-142a.managedhsm.azure.net → 10.106.2.5
 └── Private Zone: managedhsm.azure.net
-    └── A Record: mhsm-adbs-142a.managedhsm.azure.net → 10.106.2.5
+    └── A Record: mhsm-exascale-142a.managedhsm.azure.net → 10.106.2.5
 ```
 
 ### 9.2 Network ACL for Managed HSM
@@ -1029,7 +1029,7 @@ OBJECT_ID=$(az ad sp show --id $APP_ID --query id -o tsv)
 
 # Assign Managed HSM Crypto Officer role (data plane)
 az keyvault role assignment create \
-  --hsm-name mhsm-adbs-142a \
+  --hsm-name mhsm-exascale-142a \
   --role "Managed HSM Crypto Officer" \
   --assignee-object-id $OBJECT_ID \
   --assignee-principal-type ServicePrincipal \
@@ -1037,7 +1037,7 @@ az keyvault role assignment create \
 
 # Verify assignment
 az keyvault role assignment list \
-  --hsm-name mhsm-adbs-142a \
+  --hsm-name mhsm-exascale-142a \
   --query "[?principalId=='$OBJECT_ID']" \
   -o table
 ```
@@ -1046,7 +1046,7 @@ az keyvault role assignment list \
 
 ```sql
 -- Verify DNS resolution
-SELECT utl_inaddr.get_host_address('mhsm-adbs-142a.managedhsm.azure.net') FROM dual;
+SELECT utl_inaddr.get_host_address('mhsm-exascale-142a.managedhsm.azure.net') FROM dual;
 -- Expected: 10.106.2.5 (your HSM Private Endpoint IP)
 
 -- Test connectivity (HSM doesn't have /healthstatus endpoint)
@@ -1117,7 +1117,7 @@ SELECT host FROM DBA_NETWORK_ACLS WHERE host LIKE '%vault.azure.net%';
 Problem: Can't connect to Key Vault
 │
 ├─ Infrastructure deployed?
-│  ├─ NO → Run: ./deploy-adbs-demo.sh -akv
+│  ├─ NO → Run: ./deploy-exascale-demo.sh -akv
 │  └─ YES → Continue
 │
 ├─ DNS resolves to public IP?
@@ -1143,4 +1143,10 @@ Problem: Can't connect to Key Vault
 └─ Azure Firewall blocking?
    └─ Add firewall rule (Section 8.5)
 ```
+
+
+
+
+
+
 

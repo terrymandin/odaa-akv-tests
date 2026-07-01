@@ -2969,7 +2969,7 @@ Before responding to users, agents should ask:
 ### Project Documentation
 - [Step-by-step.md](Step-by-step.md) - End-to-end implementation guide
 - [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) - Architecture and configuration reference
-- [lessons-learned-adbs.md](lessons-learned-adbs.md) - Lessons learned and gotchas
+- [lessons-learned-exascale.md](lessons-learned-exascale.md) - Lessons learned and gotchas
 
 ### Library Documentation
 - [deploy/lib/README.md](deploy/lib/README.md) - Library modules overview
@@ -3099,3 +3099,4 @@ tail -f ansible_deployment.log
 **END OF DOCUMENT**
 
 *This document is designed for consumption by Large Language Models (LLMs) to assist with Oracle Database Data Guard deployment on Azure. For human-readable documentation, see README.md and DEPLOYMENT_GUIDE.md.*
+

@@ -1,14 +1,14 @@
-# Azure Key Vault for Oracle Autonomous Database encryption
-# This Key Vault will store encryption keys used by the ADBS
+# Azure Key Vault for Oracle Exascale encryption
+# This Key Vault will store encryption keys used by the Exascale VM Cluster
 
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_key_vault" "main" {
-  name                       = "adbs-kv-${random_integer.suffix.result}"
+  name                       = "exascale-kv-${random_integer.suffix.result}"
   location                   = azurerm_resource_group.main.location
   resource_group_name        = azurerm_resource_group.main.name
   tenant_id                  = data.azurerm_client_config.current.tenant_id
-  sku_name                   = "standard"
+  sku_name                   = var.key_vault_sku
   soft_delete_retention_days = 7
   purge_protection_enabled   = true
 
@@ -83,9 +83,9 @@ resource "azurerm_key_vault_access_policy" "terraform_user" {
   ]
 }
 
-# RSA encryption keys for ADBS
+# RSA encryption keys for Exascale
 resource "azurerm_key_vault_key" "rsa_2048" {
-  name         = "adbs-encryption-rsa-2048"
+  name         = "exascale-encryption-rsa-2048"
   key_vault_id = azurerm_key_vault.main.id
   key_type     = "RSA"
   key_size     = 2048
@@ -104,7 +104,7 @@ resource "azurerm_key_vault_key" "rsa_2048" {
   ]
 
   tags = merge(var.tags, {
-    "key-purpose" = "adbs-encryption-rsa-2048"
+    "key-purpose" = "exascale-encryption-rsa-2048"
   })
 
   rotation_policy {
@@ -118,7 +118,7 @@ resource "azurerm_key_vault_key" "rsa_2048" {
 }
 
 resource "azurerm_key_vault_key" "rsa_3072" {
-  name         = "adbs-encryption-rsa-3072"
+  name         = "exascale-encryption-rsa-3072"
   key_vault_id = azurerm_key_vault.main.id
   key_type     = "RSA"
   key_size     = 3072
@@ -137,7 +137,7 @@ resource "azurerm_key_vault_key" "rsa_3072" {
   ]
 
   tags = merge(var.tags, {
-    "key-purpose" = "adbs-encryption-rsa-3072"
+    "key-purpose" = "exascale-encryption-rsa-3072"
   })
 
   rotation_policy {
@@ -151,7 +151,7 @@ resource "azurerm_key_vault_key" "rsa_3072" {
 }
 
 resource "azurerm_key_vault_key" "rsa_4096" {
-  name         = "adbs-encryption-rsa-4096"
+  name         = "exascale-encryption-rsa-4096"
   key_vault_id = azurerm_key_vault.main.id
   key_type     = "RSA"
   key_size     = 4096
@@ -170,7 +170,7 @@ resource "azurerm_key_vault_key" "rsa_4096" {
   ]
 
   tags = merge(var.tags, {
-    "key-purpose" = "adbs-encryption-rsa-4096"
+    "key-purpose" = "exascale-encryption-rsa-4096"
   })
 
   rotation_policy {
@@ -185,7 +185,7 @@ resource "azurerm_key_vault_key" "rsa_4096" {
 
 # EC encryption keys
 resource "azurerm_key_vault_key" "ec_p256" {
-  name         = "adbs-encryption-ec-p256"
+  name         = "exascale-encryption-ec-p256"
   key_vault_id = azurerm_key_vault.main.id
   key_type     = "EC"
   curve        = "P-256"
@@ -200,7 +200,7 @@ resource "azurerm_key_vault_key" "ec_p256" {
   ]
 
   tags = merge(var.tags, {
-    "key-purpose" = "adbs-encryption-ec-p256"
+    "key-purpose" = "exascale-encryption-ec-p256"
   })
 
   rotation_policy {
@@ -214,7 +214,7 @@ resource "azurerm_key_vault_key" "ec_p256" {
 }
 
 resource "azurerm_key_vault_key" "ec_p256k" {
-  name         = "adbs-encryption-ec-p256k"
+  name         = "exascale-encryption-ec-p256k"
   key_vault_id = azurerm_key_vault.main.id
   key_type     = "EC"
   curve        = "P-256K"
@@ -229,7 +229,7 @@ resource "azurerm_key_vault_key" "ec_p256k" {
   ]
 
   tags = merge(var.tags, {
-    "key-purpose" = "adbs-encryption-ec-p256k"
+    "key-purpose" = "exascale-encryption-ec-p256k"
   })
 
   rotation_policy {
@@ -243,7 +243,7 @@ resource "azurerm_key_vault_key" "ec_p256k" {
 }
 
 resource "azurerm_key_vault_key" "ec_p384" {
-  name         = "adbs-encryption-ec-p384"
+  name         = "exascale-encryption-ec-p384"
   key_vault_id = azurerm_key_vault.main.id
   key_type     = "EC"
   curve        = "P-384"
@@ -258,7 +258,7 @@ resource "azurerm_key_vault_key" "ec_p384" {
   ]
 
   tags = merge(var.tags, {
-    "key-purpose" = "adbs-encryption-ec-p384"
+    "key-purpose" = "exascale-encryption-ec-p384"
   })
 
   rotation_policy {
@@ -272,7 +272,7 @@ resource "azurerm_key_vault_key" "ec_p384" {
 }
 
 resource "azurerm_key_vault_key" "ec_p521" {
-  name         = "adbs-encryption-ec-p521"
+  name         = "exascale-encryption-ec-p521"
   key_vault_id = azurerm_key_vault.main.id
   key_type     = "EC"
   curve        = "P-521"
@@ -287,7 +287,7 @@ resource "azurerm_key_vault_key" "ec_p521" {
   ]
 
   tags = merge(var.tags, {
-    "key-purpose" = "adbs-encryption-ec-p521"
+    "key-purpose" = "exascale-encryption-ec-p521"
   })
 
   rotation_policy {

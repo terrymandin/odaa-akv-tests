@@ -3,7 +3,7 @@
 # Note: terraform.tfvars is gitignored for security
 
 # Resource Configuration
-location = "uksouth"
+location = "eastus"
 
 # ============================================================================
 # Deployment Mode: ADBS (default) vs Exascale
@@ -12,6 +12,10 @@ location = "uksouth"
 # instead of Oracle Autonomous Database Serverless.
 # When true, autonomous_database_config and adbs_admin_password are ignored.
 deploy_exascale = false
+
+# Azure Key Vault SKU: "standard" (default) or "premium" (HSM-backed keys in AKV)
+# For a dedicated Hardware Security Module, set deploy_managed_hsm = true instead.
+# key_vault_sku = "standard"
 
 # Logging Configuration
 # Enable or disable Log Analytics Workspace, Diagnostic Settings, and Workbook
@@ -65,7 +69,7 @@ autonomous_database_config = {
 # Tags
 tags = {
   Environment = "Production"
-  Project     = "Oracle-ADB-AKV-PrivateEndpoint"
+  Project     = "Oracle-Exascale-AKV"
   ManagedBy   = "Terraform"
   Owner       = "Gerry"
 }

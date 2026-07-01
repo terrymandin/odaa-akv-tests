@@ -1,4 +1,4 @@
-# Resource Group for Oracle Autonomous Database + Azure Key Vault Integration
+# Resource Group for Oracle Exascale + Azure Key Vault Integration
 # This resource group will contain all resources for the private endpoint scenario
 
 resource "random_integer" "suffix" {
@@ -12,7 +12,7 @@ resource "random_integer" "vnet_octet" {
 }
 
 resource "azurerm_resource_group" "main" {
-  name     = "rg-adbs-${var.location}-${random_integer.suffix.result}"
+  name     = "rg-exascale-${var.location}-${random_integer.suffix.result}"
   location = var.location
 
   tags = var.tags
@@ -20,7 +20,7 @@ resource "azurerm_resource_group" "main" {
 
 # Virtual Network for Oracle ADB and Azure Key Vault integration
 resource "azurerm_virtual_network" "main" {
-  name                = "vnet-adbs-${var.location}-${random_integer.suffix.result}"
+  name                = "vnet-exascale-${var.location}-${random_integer.suffix.result}"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   address_space       = ["10.${random_integer.vnet_octet.result}.0.0/${var.vnet_address_space_suffix}"]
