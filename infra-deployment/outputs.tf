@@ -1,0 +1,105 @@
+# Output values for the infrastructure deployment
+
+output "random_values" {
+  description = "Random values generated for resource naming"
+  value = {
+    suffix     = random_integer.suffix.result
+    vnet_octet = random_integer.vnet_octet.result
+  }
+}
+
+output "resource_group" {
+  description = "Resource group information"
+  value = {
+    id       = azurerm_resource_group.main.id
+    name     = azurerm_resource_group.main.name
+    location = azurerm_resource_group.main.location
+  }
+}
+
+output "autonomous_database" {
+  description = "Oracle Autonomous Database details (null when deploy_exascale = true)"
+  value = var.deploy_exascale ? null : {
+    id                 = azurerm_oracle_autonomous_database.main[0].id
+    name               = azurerm_oracle_autonomous_database.main[0].name
+    display_name       = azurerm_oracle_autonomous_database.main[0].display_name
+    location           = azurerm_oracle_autonomous_database.main[0].location
+    db_version         = azurerm_oracle_autonomous_database.main[0].db_version
+    db_workload        = azurerm_oracle_autonomous_database.main[0].db_workload
+    compute_model      = azurerm_oracle_autonomous_database.main[0].compute_model
+    compute_count      = azurerm_oracle_autonomous_database.main[0].compute_count
+    storage_size_tbs   = azurerm_oracle_autonomous_database.main[0].data_storage_size_in_tbs
+    license_model      = azurerm_oracle_autonomous_database.main[0].license_model
+    subnet_id          = azurerm_oracle_autonomous_database.main[0].subnet_id
+    virtual_network_id = azurerm_oracle_autonomous_database.main[0].virtual_network_id
+  }
+}
+
+output "exascale_storage_vault" {
+  description = "Oracle Exascale DB Storage Vault details (null when deploy_exascale = false)"
+  value = var.deploy_exascale ? {
+    id           = azapi_resource.exascale_storage_vault[0].id
+    name         = azapi_resource.exascale_storage_vault[0].name
+    display_name = azapi_resource.exascale_storage_vault[0].output.properties.displayName
+    location     = azurerm_resource_group.main.location
+  } : null
+}
+
+output "exascale_vm_cluster" {
+  description = "Oracle Exascale Cloud VM Cluster details (null when deploy_exascale = false)"
+  value = var.deploy_exascale ? {
+    id            = azapi_resource.exascale_vm_cluster[0].id
+    name          = azapi_resource.exascale_vm_cluster[0].name
+    display_name  = azapi_resource.exascale_vm_cluster[0].output.properties.displayName
+    location      = azurerm_resource_group.main.location
+    hostname      = azapi_resource.exascale_vm_cluster[0].output.properties.hostname
+    scan_dns_name = azapi_resource.exascale_vm_cluster[0].output.properties.scanDnsName
+    gi_version    = azapi_resource.exascale_vm_cluster[0].output.properties.giVersion
+    license_model = azapi_resource.exascale_vm_cluster[0].output.properties.licenseModel
+    subnet_id     = azapi_resource.exascale_vm_cluster[0].output.properties.subnetId
+  } : null
+}
+
+output "managed_hsm" {
+  description = "Managed HSM details (when deployed)"
+  value = var.deploy_managed_hsm ? {
+    id                = azurerm_key_vault_managed_hardware_security_module.mhsm[0].id
+    name              = azurerm_key_vault_managed_hardware_security_module.mhsm[0].name
+    hsm_uri           = azurerm_key_vault_managed_hardware_security_module.mhsm[0].hsm_uri
+    resource_group    = azurerm_resource_group.main.name
+    location          = azurerm_resource_group.main.location
+  } : null
+}
+
+
+
+output "useful_info" {
+  description = "Info for configuring Oracle database with AKV"
+  value = {
+    rg_name                = azurerm_resource_group.main.name
+    vnet_name              = azurerm_virtual_network.main.name
+    vnet_address_space     = azurerm_virtual_network.main.address_space
+    vm_name                = azurerm_windows_virtual_machine.jumpbox.name
+    vm_admin_username      = azurerm_windows_virtual_machine.jumpbox.admin_username
+    vm_public_ip_address   = azurerm_public_ip.jumpbox.ip_address
+    vm_fqdn                = azurerm_public_ip.jumpbox.fqdn
+    akv_uri                = azurerm_key_vault.main.vault_uri
+    akv_name               = azurerm_key_vault.main.name
+    akv_private_ip_address = azurerm_private_endpoint.keyvault.private_service_connection[0].private_ip_address
+
+    fw_public_ip_address  = azurerm_public_ip.firewall.ip_address
+    fw_private_ip_address = azurerm_firewall.main.ip_configuration[0].private_ip_address
+    subscription_id       = data.azurerm_client_config.current.subscription_id
+    tenant_id             = data.azurerm_client_config.current.tenant_id
+    my_ip_address         = data.http.my_public_ip.response_body
+
+    # Deployment mode
+    deploy_mode = var.deploy_exascale ? "Exascale" : "ADBS"
+
+    # Exascale connection endpoint (null when using ADBS)
+    exascale_scan_dns_name = var.deploy_exascale ? azapi_resource.exascale_vm_cluster[0].output.properties.scanDnsName : null
+
+    # HSM URI (when HSM was deployed)
+    mhsm_uri = var.deploy_managed_hsm ? azurerm_key_vault_managed_hardware_security_module.mhsm[0].hsm_uri : ""
+  }
+}

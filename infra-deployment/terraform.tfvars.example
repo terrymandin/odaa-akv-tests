@@ -1,0 +1,109 @@
+# Example Terraform variables file
+# Copy this file to terraform.tfvars and update with your values
+# Note: terraform.tfvars is gitignored for security
+
+# Resource Configuration
+location = "uksouth"
+
+# ============================================================================
+# Deployment Mode: ADBS (default) vs Exascale
+# ============================================================================
+# Set deploy_exascale = true to deploy Oracle Exascale (Storage Vault + VM Cluster)
+# instead of Oracle Autonomous Database Serverless.
+# When true, autonomous_database_config and adbs_admin_password are ignored.
+deploy_exascale = false
+
+# Logging Configuration
+# Enable or disable Log Analytics Workspace, Diagnostic Settings, and Workbook
+# When set to false, the following resources will NOT be deployed:
+# - Log Analytics Workspace
+# - Diagnostic Settings for all services (Key Vault, VNet, Firewall, NSG)
+# - Azure Firewall Workbook for denied traffic monitoring
+enable_log_analytics_logging = true  # Set to false to disable Log Analytics infrastructure
+
+# Event Hub Logging Configuration
+# Enable or disable Event Hub for streaming diagnostic logs
+# When set to true, the following resources will be deployed:
+# - Event Hub Namespace (Standard SKU)
+# - Event Hub for diagnostic logs
+# - Separate diagnostic settings for Key Vault, VNet, Firewall, and NSG to stream to Event Hub
+# Note: This is independent from Log Analytics logging. Both can be enabled simultaneously.
+enable_eventhub_logging = false  # Set to true to enable Event Hub log streaming
+
+# Oracle Autonomous Database Configuration
+# Option 1: Use default values (defined in variables.tf)
+# Just deploy without overriding autonomous_database_config
+
+# Option 2: Override specific configuration values
+autonomous_database_config = {
+  display_name                 = "Oracle Autonomous Database - Production"
+  db_version                   = "19c"              # Options: 19c, 21c, 23ai
+  workload                     = "OLTP"             # Options: OLTP, DW, AJD, APEX
+  compute_model                = "ECPU"             # Options: ECPU, OCPU
+  compute_count                = 4                  # 1-512 compute units
+  storage_size_tbs             = 2                  # 1-384 TB
+  license_model                = "BringYourOwnLicense"  # Options: LicenseIncluded, BringYourOwnLicense
+  backup_retention_days        = 30                 # 1-60 days
+  auto_scaling_enabled         = true
+  auto_scaling_storage_enabled = true
+  mtls_required                = true
+  character_set                = "AL32UTF8"
+  national_character_set       = "AL16UTF16"
+}
+
+# IMPORTANT: Admin Password Configuration
+# RECOMMENDED: Set this via environment variable for security
+# Example: export TF_VAR_adbs_admin_password="YourSecureP@ssw0rd123"
+# 
+# Admin password requirements:
+# - 12-30 characters
+# - Must include: uppercase, lowercase, number, and special character
+#
+# If not set, the default password will be used (NOT recommended for production)
+# adbs_admin_password = "YourSecureP@ssw0rd123"
+
+# Tags
+tags = {
+  Environment = "Production"
+  Project     = "Oracle-ADB-AKV-PrivateEndpoint"
+  ManagedBy   = "Terraform"
+  Owner       = "Gerry"
+}
+
+# ============================================================================
+# Oracle Exascale Configuration (used when deploy_exascale = true)
+# ============================================================================
+
+# SSH public key for VM Cluster node access — required for Exascale.
+# RECOMMENDED: set via env var instead of committing the key here:
+#   export TF_VAR_oracle_ssh_public_key="$(cat ~/.ssh/id_rsa.pub)"
+# oracle_ssh_public_key = "ssh-rsa AAAA..."
+
+# Exascale Storage Vault configuration
+# exascale_storage_vault_config = {
+#   name                = ""           # Auto-generated if empty
+#   display_name        = ""           # Auto-generated if empty
+#   availability_zone   = "1"          # "1", "2", or "3"
+#   storage_size_in_gbs = 300          # Minimum 300 GiB
+#   time_zone           = "UTC"        # Oracle time zone (e.g. "US/Eastern")
+# }
+
+# Exascale VM Cluster configuration
+# exascale_cluster_config = {
+#   name                          = ""             # Auto-generated if empty
+#   display_name                  = ""             # Auto-generated if empty
+#   hostname                      = "exahost"      # Max 12 characters
+#   cluster_name                  = "exacluster"   # Max 11 characters
+#   domain                        = "cluster.local"
+#   enabled_ecpu_count            = 4              # ECPUs to enable (min 0)
+#   total_ecpu_count              = 4              # Total ECPUs allocated (min 2, >= enabled)
+#   node_count                    = 2              # Number of cluster nodes
+#   shape                         = "Exadata.X11M" # Oracle Exascale shape name
+#   vm_file_system_storage_in_gbs = 180            # VM file system storage in GiB
+#   license_model                 = "LicenseIncluded"  # or "BringYourOwnLicense"
+#   time_zone                     = "UTC"
+#   diagnostics_events_enabled    = true
+#   health_monitoring_enabled     = true
+#   incident_logs_enabled         = true
+# }
+
