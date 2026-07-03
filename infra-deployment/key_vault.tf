@@ -12,8 +12,8 @@ resource "azurerm_key_vault" "main" {
   soft_delete_retention_days = 7
   purge_protection_enabled   = true
 
-  # Enable public network access
-  public_network_access_enabled = true
+  # Toggle public network access; set false to enforce Private Endpoint-only access
+  public_network_access_enabled = var.key_vault_public_network_access
 
   network_acls {
     bypass         = "AzureServices"

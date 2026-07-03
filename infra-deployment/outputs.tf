@@ -17,21 +17,8 @@ output "resource_group" {
 }
 
 output "autonomous_database" {
-  description = "Oracle Autonomous Database details (null when deploy_exascale = true)"
-  value = var.deploy_exascale ? null : {
-    id                 = azurerm_oracle_autonomous_database.main[0].id
-    name               = azurerm_oracle_autonomous_database.main[0].name
-    display_name       = azurerm_oracle_autonomous_database.main[0].display_name
-    location           = azurerm_oracle_autonomous_database.main[0].location
-    db_version         = azurerm_oracle_autonomous_database.main[0].db_version
-    db_workload        = azurerm_oracle_autonomous_database.main[0].db_workload
-    compute_model      = azurerm_oracle_autonomous_database.main[0].compute_model
-    compute_count      = azurerm_oracle_autonomous_database.main[0].compute_count
-    storage_size_tbs   = azurerm_oracle_autonomous_database.main[0].data_storage_size_in_tbs
-    license_model      = azurerm_oracle_autonomous_database.main[0].license_model
-    subnet_id          = azurerm_oracle_autonomous_database.main[0].subnet_id
-    virtual_network_id = azurerm_oracle_autonomous_database.main[0].virtual_network_id
-  }
+  description = "Oracle Autonomous Database details (legacy output; not used in Exascale-only deployment)"
+  value       = null
 }
 
 output "exascale_storage_vault" {

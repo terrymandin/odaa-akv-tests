@@ -41,7 +41,7 @@ resource "azurerm_windows_virtual_machine" "jumpbox" {
   resource_group_name = azurerm_resource_group.main.name
   size                = var.jumpbox_config.size
   admin_username      = var.jumpbox_config.admin_username
-  admin_password      = coalesce(var.adbs_admin_password, "CHANGE_ME_SecureP@ssw0rd123")
+  admin_password      = coalesce(local.jumpbox_admin_password_effective, "CHANGE_ME_SecureP@ssw0rd123")
 
   network_interface_ids = [
     azurerm_network_interface.jumpbox.id,

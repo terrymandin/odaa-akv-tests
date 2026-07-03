@@ -36,6 +36,7 @@ DEPLOYMENT_MODE="fresh"
 VAULT_TYPE=""  # Can be 'keyvault', 'managedhsm', or empty (use .env)
 DEPLOY_EXASCALE=""  # Overrides DEPLOY_EXASCALE from .env when set
 CLEANUP_ON_FAILURE=false
+CLEAN_STATE_ON_FRESH=false
 ENV_FILE="${SCRIPT_DIR}/.env"
 TERRAFORM_WORK_DIR="${SCRIPT_DIR}/infra-deployment"
 
@@ -94,6 +95,7 @@ DEPLOYMENT MODES:
 
 OPTIONS:
   --cleanup-on-failure   Remove resources if deployment fails
+    --clean-state          Reset local Terraform state before fresh deploy (forces new random suffix)
   --auto-approve         Skip Terraform confirmation prompts
 
 EXAMPLES:
@@ -151,6 +153,7 @@ OPTIONAL VARIABLES:
   - ENABLE_LOG_ANALYTICS: Enable Log Analytics (true/false)
   - DEPLOY_MANAGED_HSM: Deploy Managed HSM (true/false)
   - KEY_VAULT_SKU: AKV tier — 'standard' (default) or 'premium'
+    - KEY_VAULT_PUBLIC_NETWORK_ACCESS: AKV public endpoint enabled (default: true)
 
 For more information, see .env.example
 
@@ -205,6 +208,10 @@ parse_arguments() {
                 ;;
             --cleanup-on-failure)
                 CLEANUP_ON_FAILURE=true
+                shift
+                ;;
+            --clean-state)
+                CLEAN_STATE_ON_FRESH=true
                 shift
                 ;;
             --auto-approve)
@@ -287,8 +294,9 @@ validate_configuration() {
         export TF_VAR_oracle_ssh_public_key="${ssh_key}"
     fi
 
-    # Export Key Vault SKU (standard or premium)
+    # Export Key Vault settings
     export TF_VAR_key_vault_sku="${KEY_VAULT_SKU:-standard}"
+    export TF_VAR_key_vault_public_network_access="${KEY_VAULT_PUBLIC_NETWORK_ACCESS:-true}"
     echo ""
     
     # Validate required variables based on mode
@@ -374,6 +382,7 @@ display_configuration() {
 
     print_kv "Azure Location" "${AZ_LOCATION}"
     print_kv "Terraform Dir" "${TERRAFORM_WORK_DIR}"
+    print_kv "AKV Public Access" "${KEY_VAULT_PUBLIC_NETWORK_ACCESS:-true}"
     print_kv "Log Analytics" "${ENABLE_LOG_ANALYTICS:-true}"
     print_kv "Event Hub Logging" "${ENABLE_EVENTHUB_LOGGING:-false}"
 
@@ -657,13 +666,12 @@ destroy_infrastructure() {
     # Show resources to be destroyed
     print_info "Resources to be destroyed:"
     echo ""
-    cd "${tf_dir}"
-    
+
     # Show a concise list of resources (not full details)
-    local resource_count=$(terraform state list 2>/dev/null | wc -l | tr -d ' ')
+    local resource_count=$(terraform -chdir="${tf_dir}" state list 2>/dev/null | wc -l | tr -d ' ')
     
     if [[ "${resource_count}" -gt 0 ]]; then
-        terraform state list | head -30
+        terraform -chdir="${tf_dir}" state list | head -30
         
         if [[ "${resource_count}" -gt 30 ]]; then
             echo ""
@@ -745,7 +753,13 @@ EOF
     # Execute based on deployment mode
     case "${DEPLOYMENT_MODE}" in
         fresh)
-            clean_terraform_state
+            if [[ "${CLEAN_STATE_ON_FRESH}" == "true" ]]; then
+                clean_terraform_state
+            else
+                print_info "Preserving existing Terraform state (default behavior)"
+                print_info "Use --clean-state to force a full state reset and new suffix values"
+                echo ""
+            fi
             deploy_terraform
             
             # Configure Managed HSM if enabled

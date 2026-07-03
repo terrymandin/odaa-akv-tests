@@ -25,11 +25,11 @@ resource "azurerm_virtual_network" "main" {
 
 # Subnet for Oracle Autonomous Database with delegation
 resource "azurerm_subnet" "adbs" {
-  name                            = var.adbs_subnet_name
+  name                            = local.oracle_subnet_name_effective
   resource_group_name             = azurerm_resource_group.main.name
   virtual_network_name            = azurerm_virtual_network.main.name
   default_outbound_access_enabled = false
-  address_prefixes                = ["10.40.1.0/${var.adbs_subnet_prefix_length}"]
+  address_prefixes                = ["10.40.1.0/${local.oracle_subnet_prefix_length_effective}"]
 
   delegation {
     name = var.oracle_delegation_name
@@ -50,7 +50,7 @@ resource "azurerm_subnet" "private_endpoints" {
   resource_group_name             = azurerm_resource_group.main.name
   virtual_network_name            = azurerm_virtual_network.main.name
   default_outbound_access_enabled = false
-  address_prefixes                = ["10.40.2.0/${var.adbs_subnet_prefix_length}"]
+  address_prefixes                = ["10.40.2.0/${local.oracle_subnet_prefix_length_effective}"]
 }
 
 
@@ -61,7 +61,7 @@ resource "azurerm_subnet" "nat_gateway" {
   resource_group_name             = azurerm_resource_group.main.name
   virtual_network_name            = azurerm_virtual_network.main.name
   default_outbound_access_enabled = false
-  address_prefixes                = ["10.40.3.0/${var.adbs_subnet_prefix_length}"]
+  address_prefixes                = ["10.40.3.0/${local.oracle_subnet_prefix_length_effective}"]
 }
 
 # Subnet for virtual machines (jumpbox)
@@ -69,7 +69,7 @@ resource "azurerm_subnet" "vm_subnet" {
   name                 = "vm-subnet"
   resource_group_name  = azurerm_resource_group.main.name
   virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = ["10.40.4.0/${var.adbs_subnet_prefix_length}"]
+  address_prefixes     = ["10.40.4.0/${local.oracle_subnet_prefix_length_effective}"]
 }
 
 # Subnet for Azure Firewall (required name: AzureFirewallSubnet)

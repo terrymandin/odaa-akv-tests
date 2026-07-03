@@ -6,12 +6,10 @@
 location = "eastus"
 
 # ============================================================================
-# Deployment Mode: ADBS (default) vs Exascale
+# Deployment Mode: Exascale
 # ============================================================================
-# Set deploy_exascale = true to deploy Oracle Exascale (Storage Vault + VM Cluster)
-# instead of Oracle Autonomous Database Serverless.
-# When true, autonomous_database_config and adbs_admin_password are ignored.
-deploy_exascale = false
+# This repository is configured for Oracle Exascale deployment.
+deploy_exascale = true
 
 # Azure Key Vault SKU: "standard" (default) or "premium" (HSM-backed keys in AKV)
 # For a dedicated Hardware Security Module, set deploy_managed_hsm = true instead.
@@ -34,44 +32,22 @@ enable_log_analytics_logging = true  # Set to false to disable Log Analytics inf
 # Note: This is independent from Log Analytics logging. Both can be enabled simultaneously.
 enable_eventhub_logging = false  # Set to true to enable Event Hub log streaming
 
-# Oracle Autonomous Database Configuration
-# Option 1: Use default values (defined in variables.tf)
-# Just deploy without overriding autonomous_database_config
-
-# Option 2: Override specific configuration values
-autonomous_database_config = {
-  display_name                 = "Oracle Autonomous Database - Production"
-  db_version                   = "19c"              # Options: 19c, 21c, 23ai
-  workload                     = "OLTP"             # Options: OLTP, DW, AJD, APEX
-  compute_model                = "ECPU"             # Options: ECPU, OCPU
-  compute_count                = 4                  # 1-512 compute units
-  storage_size_tbs             = 2                  # 1-384 TB
-  license_model                = "BringYourOwnLicense"  # Options: LicenseIncluded, BringYourOwnLicense
-  backup_retention_days        = 30                 # 1-60 days
-  auto_scaling_enabled         = true
-  auto_scaling_storage_enabled = true
-  mtls_required                = true
-  character_set                = "AL32UTF8"
-  national_character_set       = "AL16UTF16"
-}
-
 # IMPORTANT: Admin Password Configuration
 # RECOMMENDED: Set this via environment variable for security
-# Example: export TF_VAR_adbs_admin_password="YourSecureP@ssw0rd123"
+# Example: export TF_VAR_jumpbox_admin_password="YourSecureP@ssw0rd123"
 # 
 # Admin password requirements:
 # - 12-30 characters
 # - Must include: uppercase, lowercase, number, and special character
 #
-# If not set, the default password will be used (NOT recommended for production)
-# adbs_admin_password = "YourSecureP@ssw0rd123"
+# REQUIRED: set jumpbox_admin_password in terraform.tfvars or TF_VAR_jumpbox_admin_password
+jumpbox_admin_password = "YourSecureP@ssw0rd123"
 
 # Tags
 tags = {
-  Environment = "Production"
-  Project     = "Oracle-Exascale-AKV"
-  ManagedBy   = "Terraform"
-  Owner       = "Gerry"
+  "Created By" = "temandin"
+  Expiration = "6-Jul-26"
+  Purpose = "AKV Testing"
 }
 
 # ============================================================================
@@ -99,9 +75,9 @@ tags = {
 #   hostname                      = "exahost"      # Max 12 characters
 #   cluster_name                  = "exacluster"   # Max 11 characters
 #   domain                        = "cluster.local"
-#   enabled_ecpu_count            = 4              # ECPUs to enable (min 0)
-#   total_ecpu_count              = 4              # Total ECPUs allocated (min 2, >= enabled)
-#   node_count                    = 2              # Number of cluster nodes
+#   enabled_ecpu_count            = 8              # ECPUs to enable (min 0)
+#   total_ecpu_count              = 8              # Total ECPUs allocated (min 2, >= enabled)
+#   node_count                    = 1              # Number of cluster nodes
 #   shape                         = "Exadata.X11M" # Oracle Exascale shape name
 #   vm_file_system_storage_in_gbs = 180            # VM file system storage in GiB
 #   license_model                 = "LicenseIncluded"  # or "BringYourOwnLicense"

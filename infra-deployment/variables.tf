@@ -12,25 +12,36 @@ variable "location" {
 }
 
 
-variable "adbs_subnet_name" {
-  description = "Name for the Oracle-delegated (ExaDB) subnet"
+variable "oracle_subnet_name" {
+  description = "Name for the Oracle-delegated subnet"
   type        = string
-  default     = "oracle-subnet"
+  default     = null
 
   validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.adbs_subnet_name))
+    condition     = var.oracle_subnet_name == null || can(regex("^[a-z0-9-]+$", var.oracle_subnet_name))
+    error_message = "Subnet name must contain only lowercase letters, numbers, and hyphens."
+  }
+}
+
+variable "adbs_subnet_name" {
+  description = "DEPRECATED: use oracle_subnet_name. Name for the Oracle-delegated subnet."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.adbs_subnet_name == null || can(regex("^[a-z0-9-]+$", var.adbs_subnet_name))
     error_message = "Subnet name must contain only lowercase letters, numbers, and hyphens."
   }
 }
 
 
-variable "adbs_subnet_prefix_length" {
+variable "oracle_subnet_prefix_length" {
   description = "CIDR prefix length for Oracle-delegated subnet"
   type        = number
-  default     = 24
+  default     = 29
 
   validation {
-    condition     = var.adbs_subnet_prefix_length >= 16 && var.adbs_subnet_prefix_length <= 29
+    condition     = var.oracle_subnet_prefix_length >= 16 && var.oracle_subnet_prefix_length <= 29
     error_message = "Oracle subnet prefix length must be between /16 and /29."
   }
 }
@@ -45,10 +56,9 @@ variable "tags" {
   description = "Additional tags to apply to resources"
   type        = map(string)
   default = {
-    Environment = "Test"
-    Project     = "Oracle-Exascale-AKV"
-    ManagedBy   = "Terraform"
-    Owner       = "Gerry"
+    "Created By" = "temandin"
+    Expiry = "6-Jul-26"
+    Purpose = "AKV Testing"
   }
 }
 
@@ -80,6 +90,12 @@ variable "key_vault_sku" {
     condition     = contains(["standard", "premium"], var.key_vault_sku)
     error_message = "key_vault_sku must be 'standard' or 'premium'."
   }
+}
+
+variable "key_vault_public_network_access" {
+  description = "Enable public network access on Azure Key Vault. Set to false to require Private Endpoint access only."
+  type        = bool
+  default     = true
 }
 
 variable "deploy_exascale" {
@@ -318,14 +334,25 @@ AUTONOMOUS_DATABASE_CONFIG
   }
 }
 
+variable "jumpbox_admin_password" {
+  description = "Admin password for Windows jumpbox VM."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.jumpbox_admin_password) >= 12 && length(var.jumpbox_admin_password) <= 30
+    error_message = "Admin password must be between 12 and 30 characters."
+  }
+}
+
 variable "adbs_admin_password" {
-  description = "Admin password for Autonomous Database (min 12 chars, must include uppercase, lowercase, number, and special char). If not provided, uses the default from autonomous_database_config."
+  description = "DEPRECATED: use jumpbox_admin_password. Kept for backward compatibility."
   type        = string
   sensitive   = true
   default     = null
 
   validation {
-    condition     = var.adbs_admin_password == null || (length(var.adbs_admin_password) >= 12 && length(var.adbs_admin_password) <= 30)
+    condition     = var.adbs_admin_password == null ? true : (length(var.adbs_admin_password) >= 12 && length(var.adbs_admin_password) <= 30)
     error_message = "Admin password must be between 12 and 30 characters."
   }
 }

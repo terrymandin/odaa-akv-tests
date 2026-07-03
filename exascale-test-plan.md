@@ -28,7 +28,8 @@ Set the following in `.env` before starting any scenario:
 ```bash
 AZ_LOCATION=eastus          # or your target region
 DEPLOY_EXASCALE=true
-ORACLE_SSH_PUBLIC_KEY=        # paste output of: cat ~/.ssh/exascale-key.pub
+ORACLE_SSH_PUBLIC_KEY="ssh-rsa AAAA... user@host"   # paste full one-line output of: cat ~/.ssh/exascale-key.pub
+KEY_VAULT_PUBLIC_NETWORK_ACCESS=true                 # default for N1; set false for N2 private-only access
 ```
 
 ---

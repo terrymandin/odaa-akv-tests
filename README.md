@@ -143,10 +143,15 @@ All settings are driven by the `.env` file (copy from [.env.example](.env.exampl
 | `ORACLE_SSH_PUBLIC_KEY` | Yes (Exascale) | SSH public key for Exascale VM Cluster nodes |
 | `AZURE_SUBSCRIPTION_ID` | No | Uses active subscription if empty |
 | `KEY_VAULT_SKU` | No | `standard` (default) or `premium` (HSM-backed keys in AKV) |
+| `KEY_VAULT_PUBLIC_NETWORK_ACCESS` | No | `true` (default) for public endpoint, `false` for Private Endpoint-only access |
 | `DEPLOY_MANAGED_HSM` | No | `true` / `false` — deploy Azure Managed HSM (default: `false`) |
 | `DEPLOY_EXASCALE` | No | `true` / `false` — Exascale vs ADB Serverless (default: `true`) |
+| `ADBS_ADMIN_PASSWORD` | Conditional | Required only when `DEPLOY_EXASCALE=false` (ADB Serverless mode) |
 | `ENABLE_LOG_ANALYTICS` | No | Deploy Log Analytics workspace (default: `true`) |
 | `ENABLE_EVENTHUB_LOGGING` | No | Deploy Event Hub for log streaming (default: `false`) |
+| `TF_LOG` | No | Terraform log level (`TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`) |
+| `TERRAFORM_WORK_DIR` | No | Terraform working directory (default: `./infra-deployment`) |
+| `TERRAFORM_AUTO_APPROVE` | No | Skip Terraform approval prompts (`true` / `false`) |
 
 Exascale-specific overrides (`EXASCALE_VAULT_AZ`, `EXASCALE_CLUSTER_SHAPE`, `EXASCALE_CLUSTER_ENABLED_ECPU_COUNT`, etc.) are available — see [.env.example](.env.example) for the full list.
 

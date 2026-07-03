@@ -633,8 +633,8 @@ variable "vnet_octet_max" {
   default = 250  # Max value for 10.XXX.0.0/16
 }
 
-variable "adbs_subnet_prefix_length" {
-  default = 24  # /24 for each subnet
+variable "oracle_subnet_prefix_length" {
+    default = 29  # minimum subnet size
 }
 ```
 
