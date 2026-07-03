@@ -6,11 +6,6 @@ resource "random_integer" "suffix" {
   max = 999
 }
 
-resource "random_integer" "vnet_octet" {
-  min = var.vnet_octet_min
-  max = var.vnet_octet_max
-}
-
 resource "azurerm_resource_group" "main" {
   name     = "rg-exascale-${var.location}-${random_integer.suffix.result}"
   location = var.location
@@ -23,7 +18,7 @@ resource "azurerm_virtual_network" "main" {
   name                = "vnet-exascale-${var.location}-${random_integer.suffix.result}"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
-  address_space       = ["10.${random_integer.vnet_octet.result}.0.0/${var.vnet_address_space_suffix}"]
+  address_space       = ["10.40.0.0/16"]
 
   tags = var.tags
 }
@@ -34,7 +29,7 @@ resource "azurerm_subnet" "adbs" {
   resource_group_name             = azurerm_resource_group.main.name
   virtual_network_name            = azurerm_virtual_network.main.name
   default_outbound_access_enabled = false
-  address_prefixes                = ["10.${random_integer.vnet_octet.result}.1.0/${var.adbs_subnet_prefix_length}"]
+  address_prefixes                = ["10.40.1.0/${var.adbs_subnet_prefix_length}"]
 
   delegation {
     name = var.oracle_delegation_name
@@ -55,7 +50,7 @@ resource "azurerm_subnet" "private_endpoints" {
   resource_group_name             = azurerm_resource_group.main.name
   virtual_network_name            = azurerm_virtual_network.main.name
   default_outbound_access_enabled = false
-  address_prefixes                = ["10.${random_integer.vnet_octet.result}.2.0/${var.adbs_subnet_prefix_length}"]
+  address_prefixes                = ["10.40.2.0/${var.adbs_subnet_prefix_length}"]
 }
 
 
@@ -66,7 +61,7 @@ resource "azurerm_subnet" "nat_gateway" {
   resource_group_name             = azurerm_resource_group.main.name
   virtual_network_name            = azurerm_virtual_network.main.name
   default_outbound_access_enabled = false
-  address_prefixes                = ["10.${random_integer.vnet_octet.result}.3.0/${var.adbs_subnet_prefix_length}"]
+  address_prefixes                = ["10.40.3.0/${var.adbs_subnet_prefix_length}"]
 }
 
 # Subnet for virtual machines (jumpbox)
@@ -74,7 +69,7 @@ resource "azurerm_subnet" "vm_subnet" {
   name                 = "vm-subnet"
   resource_group_name  = azurerm_resource_group.main.name
   virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = ["10.${random_integer.vnet_octet.result}.4.0/${var.adbs_subnet_prefix_length}"]
+  address_prefixes     = ["10.40.4.0/${var.adbs_subnet_prefix_length}"]
 }
 
 # Subnet for Azure Firewall (required name: AzureFirewallSubnet)
@@ -83,6 +78,6 @@ resource "azurerm_subnet" "firewall" {
   resource_group_name             = azurerm_resource_group.main.name
   virtual_network_name            = azurerm_virtual_network.main.name
   default_outbound_access_enabled = false
-  address_prefixes                = ["10.${random_integer.vnet_octet.result}.5.0/26"]
+  address_prefixes                = ["10.40.5.0/26"]
 }
 

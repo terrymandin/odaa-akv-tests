@@ -90,6 +90,166 @@ ssh -i ~/.ssh/exascale-key \
 
 ---
 
+## Network Architecture Diagrams
+
+The diagrams below show how TDE key-operation traffic flows for each scenario under both networking options.
+
+**Arrow legend**
+| Style | Meaning |
+|---|---|
+| `→` solid | **N1 — Public networking**: TDE traffic exits through Azure Firewall to the key store's public endpoint |
+| `-.->` dashed | **N2 — Private networking**: TDE traffic stays inside the VNet via Private Endpoint |
+| `==>` thick | One-time administrative action (Scenario C security domain ceremony only) |
+
+Before every key operation, Oracle fetches a bearer token from the Azure Instance Metadata Service (`http://169.254.169.254`) using the Exascale cluster's Managed Identity. This step is identical in both N1 and N2 and is not shown separately in the diagrams.
+
+---
+
+### Shared VNet layout (all scenarios)
+
+```mermaid
+flowchart TB
+    subgraph RG["Resource Group  rg-exascale-{location}-{suffix}"]
+        subgraph VNET["Virtual Network  10.x.0.0/16"]
+            FW_S["AzureFirewallSubnet  10.x.5.0/26\nAzure Firewall + Firewall Policy\nFQDN allow rules for Oracle and key store endpoints"]
+            ORA_S["Oracle-Delegated Subnet  10.x.1.0/24\nExascale VM Cluster  2 nodes, Oracle DB + TDE\nExascale Storage Vault\nManaged Identity enabled"]
+            PE_S["Private Endpoints Subnet  10.x.2.0/24\nAKV Private Endpoint  Scenarios A and B\nMHSM Private Endpoint  Scenario C only"]
+            VM_S["VM Subnet  10.x.4.0/24\nWindows Jumpbox VM  N2 admin access only"]
+            NAT_S["NAT Gateway Subnet  10.x.3.0/24\nReserved for NAT Gateway"]
+        end
+        AKV["Azure Key Vault\nScenarios A and B"]
+        MHSM["Azure Managed HSM\nScenario C only"]
+        LAW["Log Analytics Workspace\nDiagnostics: KV, MHSM, Firewall, NSG, VNet"]
+
+        ORA_S --- PE_S
+        AKV -->|"Audit and diagnostic logs"| LAW
+        MHSM -->|"Audit and diagnostic logs"| LAW
+        FW_S -->|"Diagnostic logs"| LAW
+    end
+```
+
+---
+
+### Scenarios A and B — Azure Key Vault (Standard / Premium)
+
+The VNet topology and data-flow paths are **identical** for both SKUs. The SKU affects only the key-protection model: Standard keys are software-protected (`kty=RSA`); Premium keys are HSM-backed inside the shared vault (`kty=RSA-HSM`).
+
+```mermaid
+flowchart LR
+    ADMIN["Admin\nWorkstation"]
+    INTERNET(("Internet"))
+
+    subgraph AZURE["Azure  —  Resource Group"]
+        subgraph VNET["Virtual Network  10.x.0.0/16"]
+            subgraph FW_S["AzureFirewallSubnet  10.x.5.0/26"]
+                FW["Azure Firewall\nAllow FQDN outbound:\n  *.vault.azure.net :443\n  login.microsoftonline.com :443\n  *.oracle.com :443"]
+            end
+            subgraph ORA_S["Oracle-Delegated Subnet  10.x.1.0/24"]
+                CLUSTER["Exascale VM Cluster\nOracle DB + TDE keystore\nManaged Identity enabled"]
+                EVAULT["Exascale\nStorage Vault"]
+            end
+            subgraph PE_S["Private Endpoints Subnet  10.x.2.0/24"]
+                PE["AKV Private Endpoint\n10.x.2.x\nprivatelink.vaultcore.azure.net"]
+            end
+            subgraph VM_S["VM Subnet  10.x.4.0/24"]
+                JB["Windows Jumpbox\nN2 admin proxy only"]
+            end
+        end
+        AKV["Azure Key Vault\nA: Standard  kty=RSA\nB: Premium   kty=RSA-HSM\nAuth: Access Policies\nOps: wrapKey, unwrapKey, rotate"]
+        LAW["Log Analytics\nWorkspace"]
+    end
+
+    %% Admin SSH — N1
+    ADMIN -->|"SSH :22  N1\ndirect to node public IP"| CLUSTER
+    %% Admin SSH — N2
+    ADMIN -->|"SSH :22  N2\nto jumpbox public IP"| JB
+    JB -.->|"SSH proxy :22  N2\nto node private IP"| CLUSTER
+
+    %% TDE key operation — N1: public path through Firewall
+    CLUSTER -->|"TDE key op :443  N1\nvia Route Table to Firewall"| FW
+    FW -->|"FQDN rule allow\n*.vault.azure.net"| INTERNET
+    INTERNET -->|"public endpoint"| AKV
+
+    %% TDE key operation — N2: private path through PE
+    CLUSTER -.->|"TDE key op :443  N2\nDNS resolves to 10.x.2.x"| PE
+    PE -.->|"Private Link"| AKV
+
+    %% Oracle storage I/O
+    CLUSTER <-->|"Oracle I/O"| EVAULT
+
+    %% Diagnostics
+    AKV -->|"Audit and diagnostic logs"| LAW
+    FW -->|"Diagnostic logs"| LAW
+```
+
+**Key observations:**
+- N1: the Firewall FQDN application rule for `*.vault.azure.net` is the enforcement point; removing this rule blocks Oracle from reaching AKV.
+- N2: the Private DNS zone (`privatelink.vaultcore.azure.net`) is linked to the VNet automatically by Terraform. When `KEY_VAULT_PUBLIC_NETWORK_ACCESS=false`, the AKV public endpoint returns HTTP 403 for any request not arriving via Private Link.
+
+---
+
+### Scenario C — Azure Managed HSM
+
+Scenario C replaces the shared Key Vault with a **dedicated** HSM. Authentication switches from Access Policies to **MHSM local RBAC**. A one-time security domain ceremony (step C3) must activate the MHSM before any key operations are possible; the Exascale cluster's Managed Identity is then granted **Managed HSM Crypto User**.
+
+```mermaid
+flowchart LR
+    ADMIN["Admin\nWorkstation"]
+    INTERNET(("Internet"))
+
+    subgraph AZURE["Azure  —  Resource Group"]
+        subgraph VNET["Virtual Network  10.x.0.0/16"]
+            subgraph FW_S["AzureFirewallSubnet  10.x.5.0/26"]
+                FW["Azure Firewall\nAllow FQDN outbound:\n  *.managedhsm.azure.net :443\n  login.microsoftonline.com :443\n  *.oracle.com :443"]
+            end
+            subgraph ORA_S["Oracle-Delegated Subnet  10.x.1.0/24"]
+                CLUSTER["Exascale VM Cluster\nOracle DB + TDE keystore\nMI role: Managed HSM Crypto User"]
+                EVAULT["Exascale\nStorage Vault"]
+            end
+            subgraph PE_S["Private Endpoints Subnet  10.x.2.0/24"]
+                PE["MHSM Private Endpoint\n10.x.2.x\nprivatelink.managedhsm.azure.net"]
+            end
+            subgraph VM_S["VM Subnet  10.x.4.0/24"]
+                JB["Windows Jumpbox\nN2 admin proxy only"]
+            end
+        end
+        MHSM["Azure Managed HSM\nDedicated HSM  kty=RSA-HSM\nLocal RBAC:\n  Crypto Officer  admin user\n  Crypto User  cluster MI\nRequires security domain\nactivation before first key op"]
+        LAW["Log Analytics\nWorkspace"]
+    end
+
+    %% One-time MHSM activation (admin, step C3)
+    ADMIN ==>|"One-time: security domain ceremony\nopenssl key pairs + az keyvault\nsecurity-domain download"| MHSM
+
+    %% Admin SSH — N1
+    ADMIN -->|"SSH :22  N1\ndirect to node public IP"| CLUSTER
+    %% Admin SSH — N2
+    ADMIN -->|"SSH :22  N2\nto jumpbox public IP"| JB
+    JB -.->|"SSH proxy :22  N2\nto node private IP"| CLUSTER
+
+    %% TDE key operation — N1: public path through Firewall
+    CLUSTER -->|"TDE key op :443  N1\nvia Route Table to Firewall"| FW
+    FW -->|"FQDN rule allow\n*.managedhsm.azure.net"| INTERNET
+    INTERNET -->|"public endpoint"| MHSM
+
+    %% TDE key operation — N2: private path through PE
+    CLUSTER -.->|"TDE key op :443  N2\nDNS resolves to 10.x.2.x"| PE
+    PE -.->|"Private Link"| MHSM
+
+    %% Oracle storage I/O
+    CLUSTER <-->|"Oracle I/O"| EVAULT
+
+    %% Diagnostics
+    MHSM -->|"Audit and diagnostic logs"| LAW
+    FW -->|"Diagnostic logs"| LAW
+```
+
+**Key observations:**
+- N1: the Firewall FQDN rule must reference `*.managedhsm.azure.net` (not `*.vault.azure.net`). Oracle resolves the keystore type from the credential URI (`https://<name>.managedhsm.azure.net`).
+- N2: the Private DNS zone is `privatelink.managedhsm.azure.net`. Oracle TDE commands work identically to Scenarios A/B; only the external store credential URI changes.
+- Security domain ceremony is a **blocking prerequisite** — key creation (step C5) will fail until the MHSM status shows `Active`.
+
+---
+
 ## Scenario A — AKV Standard + Exascale
 
 ### A1. Deploy infrastructure

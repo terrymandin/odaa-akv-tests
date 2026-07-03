@@ -12,39 +12,6 @@ variable "location" {
 }
 
 
-variable "vnet_octet_min" {
-  description = "Minimum value for VNet second octet (10.XXX.0.0/16)"
-  type        = number
-  default     = 101
-
-  validation {
-    condition     = var.vnet_octet_min >= 0 && var.vnet_octet_min <= 255
-    error_message = "VNet octet minimum must be between 0 and 255."
-  }
-}
-
-variable "vnet_octet_max" {
-  description = "Maximum value for VNet second octet (10.XXX.0.0/16)"
-  type        = number
-  default     = 250
-
-  validation {
-    condition     = var.vnet_octet_max >= 0 && var.vnet_octet_max <= 255
-    error_message = "VNet octet maximum must be between 0 and 255."
-  }
-}
-
-variable "vnet_address_space_suffix" {
-  description = "CIDR suffix for VNet address space"
-  type        = number
-  default     = 16
-
-  validation {
-    condition     = var.vnet_address_space_suffix >= 8 && var.vnet_address_space_suffix <= 29
-    error_message = "VNet address space suffix must be between /8 and /29."
-  }
-}
-
 variable "adbs_subnet_name" {
   description = "Name for the Oracle-delegated (ExaDB) subnet"
   type        = string

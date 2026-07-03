@@ -3,8 +3,7 @@
 output "random_values" {
   description = "Random values generated for resource naming"
   value = {
-    suffix     = random_integer.suffix.result
-    vnet_octet = random_integer.vnet_octet.result
+    suffix = random_integer.suffix.result
   }
 }
 
