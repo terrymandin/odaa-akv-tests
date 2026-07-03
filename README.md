@@ -108,7 +108,7 @@ See [exascale-test-plan.md](exascale-test-plan.md) for the full key lifecycle te
 ├── infra-deployment/              # Terraform configuration
 │   ├── main.tf                    #   VNet, subnets, route tables
 │   ├── exascale.tf                #   Oracle Exascale Storage Vault + VM Cluster (AzAPI)
-│   ├── adbs.tf                    #   Oracle ADB Serverless (legacy, deploy_exascale=false)
+│   ├── Exascale.tf                    #   Oracle ADB Serverless (legacy, deploy_exascale=false)
 │   ├── key_vault.tf               #   Key Vault + Private Endpoint + RSA/EC keys + rotation
 │   ├── managed_hsm.tf             #   Managed HSM + Private Endpoint (optional)
 │   ├── firewall.tf                #   Azure Firewall (Standard SKU)
@@ -146,7 +146,7 @@ All settings are driven by the `.env` file (copy from [.env.example](.env.exampl
 | `KEY_VAULT_PUBLIC_NETWORK_ACCESS` | No | `true` (default) for public endpoint, `false` for Private Endpoint-only access |
 | `DEPLOY_MANAGED_HSM` | No | `true` / `false` — deploy Azure Managed HSM (default: `false`) |
 | `DEPLOY_EXASCALE` | No | `true` / `false` — Exascale vs ADB Serverless (default: `true`) |
-| `ADBS_ADMIN_PASSWORD` | Conditional | Required only when `DEPLOY_EXASCALE=false` (ADB Serverless mode) |
+| `JUMPBOX_ADMIN_PASSWORD` | Conditional | Required only when `DEPLOY_EXASCALE=false` (ADB Serverless mode) |
 | `ENABLE_LOG_ANALYTICS` | No | Deploy Log Analytics workspace (default: `true`) |
 | `ENABLE_EVENTHUB_LOGGING` | No | Deploy Event Hub for log streaming (default: `false`) |
 | `TF_LOG` | No | Terraform log level (`TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`) |

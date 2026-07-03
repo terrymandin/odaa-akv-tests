@@ -32,9 +32,9 @@
 #   nat_gateway_id = azurerm_nat_gateway.main.id
 # }
 
-# # Associate NAT Gateway with ADBS subnet
-# resource "azurerm_subnet_nat_gateway_association" "adbs" {
-#   subnet_id      = azurerm_subnet.adbs.id
+# # Associate NAT Gateway with Oracle delegated subnet
+# resource "azurerm_subnet_nat_gateway_association" "oracle" {
+#   subnet_id      = azurerm_subnet.oracle.id
 #   nat_gateway_id = azurerm_nat_gateway.main.id
 # }
 

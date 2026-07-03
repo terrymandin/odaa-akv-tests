@@ -4,14 +4,14 @@ This Terraform configuration deploys the Azure infrastructure required for integ
 
 ## Recent Updates
 
-- **ADBS Naming**: Auto-generated names use pattern `adbsakvtest{random}` when not specified
+- **Exascale Naming**: Auto-generated names use pattern `exascaleakvtest{random}` when not specified
 - **Managed HSM Output**: Added `managed_hsm` output with id, name, hsm_uri, resource_group, location
 - **Variables Generation**: `autonomous_database_config` always included in generated tfvars
 - **Private Endpoint IP**: Improved retrieval using multiple fallback methods
 
 ## Overview
 
-This infrastructure automates the Azure resource deployment for Oracle ADBS with Key Vault integration, supporting both Azure Key Vault and Managed HSM.
+This infrastructure automates the Azure resource deployment for Oracle Exascale with Key Vault integration, supporting both Azure Key Vault and Managed HSM.
 
 **Reference Documentation**: See [Step-by-step.md](../Step-by-step.md) for the end-to-end implementation guide and [DOCUMENTATION_GUIDE.md](../DOCUMENTATION_GUIDE.md) for architecture details.
 
@@ -21,7 +21,7 @@ This infrastructure automates the Azure resource deployment for Oracle ADBS with
 - **Resource Group**: Container for all Azure resources (`rg-exascale-{location}-{suffix}`)
 - **Virtual Network**: VNet with random address space (`10.{random}.0.0/16`)
 - **Subnets**: 
-  - ADBS Subnet (delegated to Oracle): `10.XXX.1.0/24`
+  - Exascale Subnet (delegated to Oracle): `10.XXX.1.0/24`
   - Private Endpoints Subnet: `10.XXX.2.0/24`
   - NAT Gateway Subnet: `10.XXX.3.0/24`
   - VM Subnet: `10.XXX.4.0/24`
@@ -35,7 +35,7 @@ This infrastructure automates the Azure resource deployment for Oracle ADBS with
 
 **Networking**:
 - **Azure Firewall**: Network security and filtering (Standard SKU with policy-based rules)
-- **NAT Gateway**: Outbound internet connectivity for ADBS subnet
+- **NAT Gateway**: Outbound internet connectivity for Exascale subnet
 - **Route Tables**: Custom routes for firewall integration
 
 **Compute**:
@@ -55,7 +55,7 @@ This infrastructure automates the Azure resource deployment for Oracle ADBS with
 
 Virtual Network: 10.{XXX}.0.0/16
 
-├── ADBS Subnet (10.{XXX}.1.0/24)The Autonomous Database requires an admin password. **IMPORTANT: Never commit passwords to git.**
+├── Exascale Subnet (10.{XXX}.1.0/24)The Autonomous Database requires an admin password. **IMPORTANT: Never commit passwords to git.**
 
 │   ├── Oracle Database delegation
 
@@ -63,7 +63,7 @@ Virtual Network: 10.{XXX}.0.0/16
 
 │   └── NAT Gateway association```bash
 
-├── Private Endpoints Subnet (10.{XXX}.2.0/24)export TF_VAR_adbs_admin_password="YourSecureP@ssw0rd123"
+├── Private Endpoints Subnet (10.{XXX}.2.0/24)export TF_VAR_JUMPBOX_ADMIN_PASSWORD="YourSecureP@ssw0rd123"
 
 │   └── Key Vault Private Endpoint```
 
@@ -75,7 +75,7 @@ Virtual Network: 10.{XXX}.0.0/16
 
 │   └── Windows Jumpbox VMcp terraform.tfvars.example terraform.tfvars
 
-└── AzureFirewallSubnet (10.{XXX}.5.0/26)# Edit terraform.tfvars and set adbs_admin_password
+└── AzureFirewallSubnet (10.{XXX}.5.0/26)# Edit terraform.tfvars and set JUMPBOX_ADMIN_PASSWORD
 
     └── Azure Firewall# Note: terraform.tfvars is gitignored
 
@@ -125,7 +125,7 @@ terraform plan
 
 - Controlled by `enable_eventhub_logging` variable- VNet address space is within 10.101-250.0.0/16
 
-- ADBS subnet has Oracle delegation
+- Exascale subnet has Oracle delegation
 
 ## Prerequisites
 
@@ -175,7 +175,7 @@ terraform plan
 
 ```bashterraform destroy
 
-export TF_VAR_adbs_admin_password="YourSecureP@ssw0rd123"```
+export TF_VAR_JUMPBOX_ADMIN_PASSWORD="YourSecureP@ssw0rd123"```
 
 ```
 
@@ -195,7 +195,7 @@ export TF_VAR_adbs_admin_password="YourSecureP@ssw0rd123"```
 
 |----------|-------------|---------|
 
-```bash| `adbs_admin_password` | Admin password for Autonomous Database | `SecureP@ssw0rd123` |
+```bash| `JUMPBOX_ADMIN_PASSWORD` | Admin password for Autonomous Database | `SecureP@ssw0rd123` |
 
 cd infra-deployment/akv-scenario
 
@@ -263,7 +263,7 @@ terraform output -json useful_info | jq -r '.value.vm_fqdn'- Log Analytics Works
 
 |----------|-------------|---------|- Workbook: No cost (visualization only)
 
-| `adbs_admin_password` | Database admin password | Set via environment variable |
+| `JUMPBOX_ADMIN_PASSWORD` | Database admin password | Set via environment variable |
 
 **Example: Disable Log Analytics logging:**
 
@@ -357,17 +357,17 @@ Control deployment of Log Analytics infrastructure:| Variable | Description | De
 
 |----------|-------------|---------|---------|
 
-| Variable | Description | Default | Impact || `adbs_db_version` | Oracle Database version | `19c` | `19c`, `21c`, `23ai` |
+| Variable | Description | Default | Impact || `EXASCALE_db_version` | Oracle Database version | `19c` | `19c`, `21c`, `23ai` |
 
-|----------|-------------|---------|--------|| `adbs_workload` | Database workload type | `OLTP` | `OLTP`, `DW`, `AJD`, `APEX` |
+|----------|-------------|---------|--------|| `EXASCALE_workload` | Database workload type | `OLTP` | `OLTP`, `DW`, `AJD`, `APEX` |
 
-| `enable_log_analytics_logging` | Enable Log Analytics | `true` | Workspace + diagnostics + workbook || `adbs_compute_model` | Compute model | `ECPU` | `ECPU`, `OCPU` |
+| `enable_log_analytics_logging` | Enable Log Analytics | `true` | Workspace + diagnostics + workbook || `EXASCALE_compute_model` | Compute model | `ECPU` | `ECPU`, `OCPU` |
 
-| `adbs_compute_count` | Number of compute units | `2` | 1-512 |
+| `EXASCALE_compute_count` | Number of compute units | `2` | 1-512 |
 
-**When enabled:**| `adbs_storage_size_tbs` | Storage size in TB | `1` | 1-384 |
+**When enabled:**| `EXASCALE_storage_size_tbs` | Storage size in TB | `1` | 1-384 |
 
-- ✅ Log Analytics Workspace deployed| `adbs_license_model` | Oracle license model | `LicenseIncluded` | `LicenseIncluded`, `BringYourOwnLicense` |
+- ✅ Log Analytics Workspace deployed| `EXASCALE_license_model` | Oracle license model | `LicenseIncluded` | `LicenseIncluded`, `BringYourOwnLicense` |
 
 - ✅ Diagnostic settings for Key Vault, VNet, Firewall, NSG
 
@@ -379,13 +379,13 @@ Control deployment of Log Analytics infrastructure:| Variable | Description | De
 
 - ❌ No Log Analytics resources|----------|-------------|---------|
 
-- ❌ No diagnostic settings to Log Analytics| `adbs_auto_scaling_enabled` | Enable CPU auto-scaling | `false` |
+- ❌ No diagnostic settings to Log Analytics| `EXASCALE_auto_scaling_enabled` | Enable CPU auto-scaling | `false` |
 
-- 💰 Reduces costs (~$2.30/GB in UK South)| `adbs_auto_scaling_storage_enabled` | Enable storage auto-scaling | `false` |
+- 💰 Reduces costs (~$2.30/GB in UK South)| `EXASCALE_auto_scaling_storage_enabled` | Enable storage auto-scaling | `false` |
 
-| `adbs_mtls_required` | Require mTLS connections | `false` |
+| `EXASCALE_mtls_required` | Require mTLS connections | `false` |
 
-**Example:**| `adbs_backup_retention_days` | Backup retention period | `7` |
+**Example:**| `EXASCALE_backup_retention_days` | Backup retention period | `7` |
 
 ```bash
 
@@ -407,7 +407,7 @@ Control deployment of Event Hub for log streaming:| `random_values` | Random val
 
 | Variable | Description | Default | Impact || `virtual_network` | VNet details including address space |
 
-|----------|-------------|---------|--------|| `adbs_subnet` | ADBS subnet details with delegation info |
+|----------|-------------|---------|--------|| `oracle_subnet` | Exascale subnet details with delegation info |
 
 | `enable_eventhub_logging` | Enable Event Hub | `false` | Namespace + hub + diagnostics || `autonomous_database` | Database details (connection strings, OCID, URLs) - **Sensitive** |
 
@@ -423,7 +423,7 @@ Control deployment of Event Hub for log streaming:| `random_values` | Random val
 
 - ✅ Real-time log streaming capability```bash
 
-export TF_VAR_adbs_admin_password="YourSecureP@ssw0rd123"
+export TF_VAR_JUMPBOX_ADMIN_PASSWORD="YourSecureP@ssw0rd123"
 
 **When disabled:**terraform apply -auto-approve
 
@@ -439,7 +439,7 @@ export TF_VAR_adbs_admin_password="YourSecureP@ssw0rd123"
 
 **Use cases:**# Set admin password
 
-- Stream logs to external SIEM (Splunk, QRadar, etc.)export TF_VAR_adbs_admin_password="MySecureP@ss2024"
+- Stream logs to external SIEM (Splunk, QRadar, etc.)export TF_VAR_JUMPBOX_ADMIN_PASSWORD="MySecureP@ss2024"
 
 - Real-time analytics with Azure Stream Analytics
 
@@ -449,11 +449,11 @@ export TF_VAR_adbs_admin_password="YourSecureP@ssw0rd123"
 
   -var="owner_name=john" \
 
-**Example:**  -var="adbs_compute_count=4" \
+**Example:**  -var="EXASCALE_compute_count=4" \
 
-```bash  -var="adbs_storage_size_tbs=2" \
+```bash  -var="EXASCALE_storage_size_tbs=2" \
 
-export TF_VAR_enable_eventhub_logging=true  -var="adbs_auto_scaling_enabled=true"
+export TF_VAR_enable_eventhub_logging=true  -var="EXASCALE_auto_scaling_enabled=true"
 
 terraform apply```
 
@@ -465,27 +465,27 @@ terraform apply```
 
 ```bash
 
-### Tags Configurationexport TF_VAR_adbs_admin_password="ProductionP@ssw0rd2024"
+### Tags Configurationexport TF_VAR_JUMPBOX_ADMIN_PASSWORD="ProductionP@ssw0rd2024"
 
 
 
 Customize resource tags via the `tags` variable:terraform apply \
 
-  -var="adbs_db_version=23ai" \
+  -var="EXASCALE_db_version=23ai" \
 
-```hcl  -var="adbs_compute_count=8" \
+```hcl  -var="EXASCALE_compute_count=8" \
 
-tags = {  -var="adbs_storage_size_tbs=5" \
+tags = {  -var="EXASCALE_storage_size_tbs=5" \
 
-  Environment = "Production"  -var="adbs_auto_scaling_enabled=true" \
+  Environment = "Production"  -var="EXASCALE_auto_scaling_enabled=true" \
 
-  Project     = "Oracle-ADB-AKV-Integration"  -var="adbs_auto_scaling_storage_enabled=true" \
+  Project     = "Oracle-ADB-AKV-Integration"  -var="EXASCALE_auto_scaling_storage_enabled=true" \
 
-  ManagedBy   = "Terraform"  -var="adbs_mtls_required=true" \
+  ManagedBy   = "Terraform"  -var="EXASCALE_mtls_required=true" \
 
-  Owner       = "YourName"  -var="adbs_backup_retention_days=30" \
+  Owner       = "YourName"  -var="EXASCALE_backup_retention_days=30" \
 
-}  -var="adbs_license_model=BringYourOwnLicense"
+}  -var="EXASCALE_license_model=BringYourOwnLicense"
 
 ``````
 
@@ -499,7 +499,7 @@ tags = {  -var="adbs_storage_size_tbs=5" \
 
 Azure Virtual Network: 10.XXX.0.0/16 (XXX = random 101-250)
 
-| Output | Description | Sensitive |└── ADBS Subnet: 10.XXX.1.0/24
+| Output | Description | Sensitive |└── Exascale Subnet: 10.XXX.1.0/24
 
 |--------|-------------|-----------|    └── Delegation: Oracle.Database/networkAttachments
 
@@ -513,7 +513,7 @@ Azure Virtual Network: 10.XXX.0.0/16 (XXX = random 101-250)
 
 | `log_analytics_workspace` | Log Analytics details (if enabled) | No |- VNet address space is randomized to avoid conflicts
 
-| `firewall_workbook` | Workbook details (if enabled) | No |- ADBS subnet is dedicated and delegated to Oracle
+| `firewall_workbook` | Workbook details (if enabled) | No |- Exascale subnet is dedicated and delegated to Oracle
 
 | `eventhub_namespace` | Event Hub namespace details (if enabled) | Yes |- Database has no public endpoint
 
@@ -569,7 +569,7 @@ terraform output -json autonomous_database | jq -r '.value.lifecycle_state'
 
 ```bash### 2. Access Service Console
 
-export TF_VAR_adbs_admin_password="DevP@ssw0rd123"
+export TF_VAR_JUMPBOX_ADMIN_PASSWORD="DevP@ssw0rd123"
 
 terraform apply -auto-approve```bash
 
@@ -583,7 +583,7 @@ terraform output -json autonomous_database | jq -r '.value.service_console_url'
 
 ```bash
 
-export TF_VAR_adbs_admin_password="ProdSecureP@ss2024!"### 3. Configure OCI Private DNS Zones
+export TF_VAR_JUMPBOX_ADMIN_PASSWORD="ProdSecureP@ss2024!"### 3. Configure OCI Private DNS Zones
 
 
 
@@ -621,7 +621,7 @@ terraform apply \For Azure Key Vault integration, create these DNS zones in OCI:
 
 ```bash
 
-export TF_VAR_adbs_admin_password="TestP@ssw0rd123"## Next Steps
+export TF_VAR_JUMPBOX_ADMIN_PASSWORD="TestP@ssw0rd123"## Next Steps
 
 export TF_VAR_enable_log_analytics_logging=false
 
@@ -649,7 +649,7 @@ terraform apply \   - Deploy Azure Key Vault
 
 ```bash   - Configure database for external key management
 
-export TF_VAR_adbs_admin_password="ComplianceP@ss2024!"   - Point to Azure Key Vault
+export TF_VAR_JUMPBOX_ADMIN_PASSWORD="ComplianceP@ss2024!"   - Point to Azure Key Vault
 
 export TF_VAR_enable_log_analytics_logging=true   - Restart database to apply TDE
 
@@ -707,7 +707,7 @@ az keyvault show \   - Database has no public endpoint
 
 # Get connection details4. **mTLS Configuration:**
 
-terraform output -json useful_info | jq '{   - Set `adbs_mtls_required = true` for production
+terraform output -json useful_info | jq '{   - Set `EXASCALE_mtls_required = true` for production
 
   vm_fqdn,   - Distribute client certificates securely
 
@@ -767,7 +767,7 @@ Test-NetConnection -ComputerName $(terraform output -json useful_info | jq -r '.
 
 ```
 
-1. Verify subnet delegation: `terraform output adbs_subnet`
+1. Verify subnet delegation: `terraform output oracle_subnet`
 
 ### 5. Configure TDE with Azure Key Vault2. Check NSG rules
 
@@ -807,7 +807,7 @@ See documentation for complete TDE configuration steps.
 
 - ✅ Key Vault public access automatically disabled post-deploymentFor questions and detailed guidance:
 
-- ✅ Firewall controls all outbound traffic from ADBS subnet
+- ✅ Firewall controls all outbound traffic from Exascale subnet
 - **Architecture Guide**: `../DOCUMENTATION_GUIDE.md`
 
 - ✅ NSGs protect jumpbox subnet- **AI Agent Instructions**: `../../.github/copilot-instructions.md`
@@ -824,7 +824,7 @@ See documentation for complete TDE configuration steps.
 
 - ✅ Soft delete with 7-day retention enabled- `main.tf` - Resource group, VNet, subnet
 
-- ✅ Purge protection enabled- `adbs.tf` - Oracle Autonomous Database resource
+- ✅ Purge protection enabled- `Exascale.tf` - Oracle Autonomous Database resource
 
 - `variables.tf` - Input variable definitions
 
@@ -980,7 +980,7 @@ To use local state instead:
 ```
 infra-deployment/akv-scenario/
 ├── main.tf                  # Core resources (RG, VNet, subnets)
-├── adbs.tf                  # Oracle Autonomous Database
+├── Exascale.tf                  # Oracle Autonomous Database
 ├── key_vault.tf             # Key Vault, private endpoint, access policies
 ├── firewall.tf              # Azure Firewall
 ├── firewall_policy.tf       # Firewall rules and policies

@@ -23,17 +23,6 @@ variable "oracle_subnet_name" {
   }
 }
 
-variable "adbs_subnet_name" {
-  description = "DEPRECATED: use oracle_subnet_name. Name for the Oracle-delegated subnet."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.adbs_subnet_name == null || can(regex("^[a-z0-9-]+$", var.adbs_subnet_name))
-    error_message = "Subnet name must contain only lowercase letters, numbers, and hyphens."
-  }
-}
-
 
 variable "oracle_subnet_prefix_length" {
   description = "CIDR prefix length for Oracle-delegated subnet"
@@ -41,8 +30,8 @@ variable "oracle_subnet_prefix_length" {
   default     = 29
 
   validation {
-    condition     = var.oracle_subnet_prefix_length >= 16 && var.oracle_subnet_prefix_length <= 29
-    error_message = "Oracle subnet prefix length must be between /16 and /29."
+    condition     = var.oracle_subnet_prefix_length >= 27 && var.oracle_subnet_prefix_length <= 29
+    error_message = "Oracle subnet prefix length must be between /27 and /29."
   }
 }
 
@@ -102,6 +91,12 @@ variable "deploy_exascale" {
   description = "Deploy Oracle Exascale (Exascale Storage Vault + Cloud VM Cluster) instead of Autonomous Database Serverless. When true, ADB Serverless will not be deployed."
   type        = bool
   default     = false
+}
+
+variable "deploy_jumpbox_vm" {
+  description = "Deploy the Windows jumpbox VM and related networking resources (public IP, NIC, NSG, association)."
+  type        = bool
+  default     = true
 }
 
 # Oracle Exascale Variables
@@ -168,7 +163,8 @@ Configuration for the Oracle Exascale Cloud VM Cluster (Oracle.Database/exadbVmC
 - `enabled_ecpu_count`            - (Required) Number of ECPUs to enable on the cluster (min 0).
 - `total_ecpu_count`              - (Required) Total ECPUs allocated to the cluster (min 2).
 - `node_count`                    - (Required) Number of cluster nodes.
-- `shape`                         - (Required) Oracle Exascale shape name (e.g., "Exadata.X11M").
+- `shape`                         - (Required) Oracle Exascale shape name (e.g., "ExaDbXS").
+- `grid_image_ocid`                - (Required) Grid image OCID used by Exascale VM Cluster provisioning.
 - `vm_file_system_storage_in_gbs` - (Required) VM file system storage per cluster in GiB.
 - `license_model`                 - (Optional) "LicenseIncluded" or "BringYourOwnLicense".
 - `time_zone`                     - (Optional) Cluster time zone (e.g., "UTC", "US/Eastern").
@@ -187,6 +183,7 @@ EXASCALE_CLUSTER_CONFIG
     total_ecpu_count              = number
     node_count                    = number
     shape                         = string
+    grid_image_ocid                = string
     vm_file_system_storage_in_gbs = number
     license_model                 = string
     time_zone                     = string
@@ -200,12 +197,13 @@ EXASCALE_CLUSTER_CONFIG
     display_name                  = ""
     hostname                      = "exahost"
     cluster_name                  = "exacluster"
-    domain                        = "cluster.local"
+    domain                        = "oracle-subnet"
     enabled_ecpu_count            = 4
     total_ecpu_count              = 4
     node_count                    = 2
-    shape                         = "Exadata.X11M"
-    vm_file_system_storage_in_gbs = 180
+    shape                         = "ExaDbXS"
+    grid_image_ocid                = ""
+    vm_file_system_storage_in_gbs = 220
     license_model                 = "LicenseIncluded"
     time_zone                     = "UTC"
     diagnostics_events_enabled    = true
@@ -338,22 +336,11 @@ variable "jumpbox_admin_password" {
   description = "Admin password for Windows jumpbox VM."
   type        = string
   sensitive   = true
-
-  validation {
-    condition     = length(var.jumpbox_admin_password) >= 12 && length(var.jumpbox_admin_password) <= 30
-    error_message = "Admin password must be between 12 and 30 characters."
-  }
-}
-
-variable "adbs_admin_password" {
-  description = "DEPRECATED: use jumpbox_admin_password. Kept for backward compatibility."
-  type        = string
-  sensitive   = true
   default     = null
 
   validation {
-    condition     = var.adbs_admin_password == null ? true : (length(var.adbs_admin_password) >= 12 && length(var.adbs_admin_password) <= 30)
-    error_message = "Admin password must be between 12 and 30 characters."
+    condition     = var.deploy_jumpbox_vm ? (var.jumpbox_admin_password != null && length(var.jumpbox_admin_password) >= 12 && length(var.jumpbox_admin_password) <= 30) : true
+    error_message = "When deploy_jumpbox_vm is true, jumpbox_admin_password must be set and be between 12 and 30 characters."
   }
 }
 

@@ -13,7 +13,7 @@ resource "azurerm_resource_group" "main" {
   tags = var.tags
 }
 
-# Virtual Network for Oracle ADB and Azure Key Vault integration
+# Virtual Network for Oracle Exascale and Azure Key Vault integration
 resource "azurerm_virtual_network" "main" {
   name                = "vnet-exascale-${var.location}-${random_integer.suffix.result}"
   location            = azurerm_resource_group.main.location
@@ -23,8 +23,8 @@ resource "azurerm_virtual_network" "main" {
   tags = var.tags
 }
 
-# Subnet for Oracle Autonomous Database with delegation
-resource "azurerm_subnet" "adbs" {
+# Subnet for Oracle Exascale networking attachment delegation
+resource "azurerm_subnet" "oracle" {
   name                            = local.oracle_subnet_name_effective
   resource_group_name             = azurerm_resource_group.main.name
   virtual_network_name            = azurerm_virtual_network.main.name

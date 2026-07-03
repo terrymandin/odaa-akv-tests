@@ -4,12 +4,16 @@
 
 # Resource Configuration
 location = "eastus"
+oracle_subnet_prefix_length = 27  # Allowed range: /27 to /29
 
 # ============================================================================
 # Deployment Mode: Exascale
 # ============================================================================
 # This repository is configured for Oracle Exascale deployment.
 deploy_exascale = true
+
+# Set to false to skip creating the Windows jumpbox VM and related resources.
+deploy_jumpbox_vm = true
 
 # Azure Key Vault SKU: "standard" (default) or "premium" (HSM-backed keys in AKV)
 # For a dedicated Hardware Security Module, set deploy_managed_hsm = true instead.
@@ -40,7 +44,7 @@ enable_eventhub_logging = false  # Set to true to enable Event Hub log streaming
 # - 12-30 characters
 # - Must include: uppercase, lowercase, number, and special character
 #
-# REQUIRED: set jumpbox_admin_password in terraform.tfvars or TF_VAR_jumpbox_admin_password
+# REQUIRED when deploy_jumpbox_vm = true: set jumpbox_admin_password in terraform.tfvars or TF_VAR_jumpbox_admin_password
 jumpbox_admin_password = "YourSecureP@ssw0rd123"
 
 # Tags
@@ -74,12 +78,13 @@ tags = {
 #   display_name                  = ""             # Auto-generated if empty
 #   hostname                      = "exahost"      # Max 12 characters
 #   cluster_name                  = "exacluster"   # Max 11 characters
-#   domain                        = "cluster.local"
+#   domain                        = "oracle-subnet"
 #   enabled_ecpu_count            = 8              # ECPUs to enable (min 0)
 #   total_ecpu_count              = 8              # Total ECPUs allocated (min 2, >= enabled)
 #   node_count                    = 1              # Number of cluster nodes
-#   shape                         = "Exadata.X11M" # Oracle Exascale shape name
-#   vm_file_system_storage_in_gbs = 180            # VM file system storage in GiB
+#   shape                         = "ExaDbXS" # Oracle Exascale shape name
+#   grid_image_ocid                 = "<grid-infrastructure-ocid>" 
+#   vm_file_system_storage_in_gbs = 220            # VM file system storage in GiB
 #   license_model                 = "LicenseIncluded"  # or "BringYourOwnLicense"
 #   time_zone                     = "UTC"
 #   diagnostics_events_enabled    = true

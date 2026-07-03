@@ -1,5 +1,5 @@
 
-# Firewall Policy with Azure Arc and ADBS rules
+# Firewall Policy with Azure Arc and Exascale rules
 resource "azurerm_firewall_policy" "main" {
   name                     = "afwp-${var.location}-${random_integer.suffix.result}"
   location                 = azurerm_resource_group.main.location
@@ -20,14 +20,14 @@ resource "azurerm_firewall_policy" "main" {
   }
 }
 
-# Network Rule Collection Group for ADBS connectivity
+# Network Rule Collection Group for Exascale connectivity
 resource "azurerm_firewall_policy_rule_collection_group" "network_rules" {
   name               = "DefaultNetworkRuleCollectionGroup"
   firewall_policy_id = azurerm_firewall_policy.main.id
   priority           = 200
 
   network_rule_collection {
-    name     = "ADBSRuleCollection"
+    name     = "ExascaleRuleCollection"
     priority = 900
     action   = "Allow"
 
@@ -49,7 +49,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "network_rules" {
   }
 }
 
-# Application Rule Collection Group for Azure Arc services
+# Network Rule Collection Group for Exascale connectivity
 resource "azurerm_firewall_policy_rule_collection_group" "application_rules" {
   name               = "DefaultApplicationRuleCollectionGroup"
   firewall_policy_id = azurerm_firewall_policy.main.id

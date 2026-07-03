@@ -1,6 +1,6 @@
 # Oracle Exascale Infrastructure
 # Deploys Oracle Database@Azure Exascale (Storage Vault + Cloud VM Cluster)
-# Controlled by the deploy_exascale variable (false = ADB Serverless, true = Exascale)
+# Controlled by the deploy_exascale variable.
 #
 # Both resources use the AzAPI provider because azurerm does not expose
 # Oracle Exascale resource types in the current provider version.
@@ -63,8 +63,9 @@ resource "azapi_resource" "exascale_vm_cluster" {
       totalEcpuCount           = var.exascale_cluster_config.total_ecpu_count
       nodeCount                = var.exascale_cluster_config.node_count
       shape                    = var.exascale_cluster_config.shape
+      gridImageOcid            = var.exascale_cluster_config.grid_image_ocid
       exascaleDbStorageVaultId = azapi_resource.exascale_storage_vault[0].id
-      subnetId                 = azurerm_subnet.adbs.id
+      subnetId                 = azurerm_subnet.oracle.id
       vnetId                   = azurerm_virtual_network.main.id
       sshPublicKeys            = [var.oracle_ssh_public_key]
       licenseModel             = var.exascale_cluster_config.license_model
@@ -87,6 +88,10 @@ resource "azapi_resource" "exascale_vm_cluster" {
     precondition {
       condition     = var.oracle_ssh_public_key != ""
       error_message = "oracle_ssh_public_key must be set when deploy_exascale = true. Provide via TF_VAR_oracle_ssh_public_key env var or in terraform.tfvars."
+    }
+    precondition {
+      condition     = var.exascale_cluster_config.grid_image_ocid != ""
+      error_message = "exascale_cluster_config.grid_image_ocid must be set when deploy_exascale = true. This is the Azure Grid Infrastructure image ID from the portal (e.g., for release 26ai, version 23.26.2.0.0)."
     }
   }
 

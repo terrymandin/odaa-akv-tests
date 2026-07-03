@@ -71,10 +71,10 @@ resource "azurerm_monitor_diagnostic_setting" "firewall" {
 
 # Diagnostic settings for Network Security Group (Jumpbox)
 resource "azurerm_monitor_diagnostic_setting" "nsg_jumpbox" {
-  count = var.enable_log_analytics_logging ? 1 : 0
+  count = var.enable_log_analytics_logging && var.deploy_jumpbox_vm ? 1 : 0
 
   name                       = "diag-nsg-jumpbox-${random_integer.suffix.result}"
-  target_resource_id         = azurerm_network_security_group.jumpbox.id
+  target_resource_id         = azurerm_network_security_group.jumpbox[0].id
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main[0].id
 
   enabled_log {

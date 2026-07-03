@@ -4,7 +4,7 @@ This repository provides comprehensive infrastructure-as-code (Terraform) and st
 
 ## 🆕 Recent Updates (February 2026)
 
-- **ADB Naming Fix (legacy)**: Auto-generated names now follow pattern `adbsakvtest[random]` (e.g., `adbsakvtest875`)
+- **ADB Naming Fix (legacy)**: Auto-generated names now follow pattern `exascaleakvtest[random]` (e.g., `exascaleakvtest875`)
 - **Terraform Variables**: Always generates complete `autonomous_database_config` block in tfvars
 - **HSM Output**: Added missing `managed_hsm` output to Terraform for proper HSM configuration
 - **HSM Activation**: Improved detection of HSM activation state and Security Domain handling
@@ -76,7 +76,7 @@ flowchart TB
     
     subgraph Azure["Azure Cloud"]
         subgraph VNet["Virtual Network<br/>10.X.0.0/16"]
-            subgraph ADBSubnet["Oracle Subnet<br/>10.X.1.0/24"]
+            subgraph OracleSubnet["Oracle Subnet<br/>10.X.1.0/24"]
                 ADB["Oracle Autonomous<br/>Database"]
             end
             
@@ -1075,9 +1075,9 @@ This guide is maintained for testing and validation purposes. For production dep
 
 ### Official Documentation
 
-- 📘 [Oracle Autonomous Database Documentation](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/)
-- 🔐 [Oracle ADB Encryption Keys](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/autonomous-encrypt-set-rotate-keys.html)
-- 🔑 [Azure Key Vault with Oracle](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/encryption-keys-azure-key-vault.html)
+- 📘 [Oracle Autonomous Database Documentation](https://docs.oracle.com/en/cloud/paas/autonomous-database/autonomous-database/)
+- 🔐 [Oracle ADB Encryption Keys](https://docs.oracle.com/en/cloud/paas/autonomous-database/autonomous-database/autonomous-encrypt-set-rotate-keys.html)
+- 🔑 [Azure Key Vault with Oracle](https://docs.oracle.com/en/cloud/paas/autonomous-database/autonomous-database/encryption-keys-azure-key-vault.html)
 - 🔒 [Azure Key Vault Best Practices](https://learn.microsoft.com/en-us/azure/key-vault/general/best-practices)
 - 🛡️ [Azure Security Baseline - Key Vault](https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/key-vault-security-baseline)
 
@@ -1168,7 +1168,7 @@ flowchart LR
 
 - 🔗 [Oracle Database@Azure Overview](https://www.oracle.com/cloud/azure/oracle-database-at-azure/)
 - 📘 [Autonomous Database Features](https://www.oracle.com/autonomous-database/)
-- 🔐 [Customer-Managed Keys Guide](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/autonomous-encrypt-set-rotate-keys.html)
+- 🔐 [Customer-Managed Keys Guide](https://docs.oracle.com/en/cloud/paas/autonomous-database/autonomous-database/autonomous-encrypt-set-rotate-keys.html)
 
 ## ⚖️ License
 

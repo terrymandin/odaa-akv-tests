@@ -97,10 +97,10 @@ resource "azurerm_monitor_diagnostic_setting" "firewall_eventhub" {
 
 # Diagnostic Settings for Network Security Group (Jumpbox) - Event Hub
 resource "azurerm_monitor_diagnostic_setting" "nsg_jumpbox_eventhub" {
-  count = var.enable_eventhub_logging ? 1 : 0
+  count = var.enable_eventhub_logging && var.deploy_jumpbox_vm ? 1 : 0
 
   name                           = "diag-nsg-jumpbox-eventhub-${random_integer.suffix.result}"
-  target_resource_id             = azurerm_network_security_group.jumpbox.id
+  target_resource_id             = azurerm_network_security_group.jumpbox[0].id
   eventhub_name                  = azurerm_eventhub.diagnostic_logs[0].name
   eventhub_authorization_rule_id = azurerm_eventhub_namespace_authorization_rule.diagnostic[0].id
 

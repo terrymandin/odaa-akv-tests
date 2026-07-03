@@ -83,8 +83,8 @@ Usage: $(basename "$0") [MODE] [OPTIONS]
 
 DEPLOYMENT MODES:
   (default)              Fresh deployment (uses DEPLOY_MANAGED_HSM from .env)
-  -akv, --key-vault      Fresh deployment with Azure Key Vault + ADB Serverless
-  -hsm, --managed-hsm    Fresh deployment with Managed HSM + ADB Serverless
+    -akv, --key-vault      Fresh deployment with Azure Key Vault + Oracle Exascale
+    -hsm, --managed-hsm    Fresh deployment with Managed HSM + Oracle Exascale
   -exascale              Fresh deployment with Azure Key Vault + Oracle Exascale
   -exascale-hsm          Fresh deployment with Managed HSM + Oracle Exascale
   --only-configure-hsm   Configure Managed HSM only (requires deployed infra)
@@ -102,10 +102,10 @@ EXAMPLES:
   # Fresh deployment (uses .env DEPLOY_MANAGED_HSM setting)
   ./deploy-exascale-demo.sh
 
-  # Fresh deployment with Azure Key Vault + ADB Serverless
+    # Fresh deployment with Azure Key Vault + Oracle Exascale
   ./deploy-exascale-demo.sh -akv
 
-  # Fresh deployment with Managed HSM + ADB Serverless
+    # Fresh deployment with Managed HSM + Oracle Exascale
   ./deploy-exascale-demo.sh -hsm
 
   # Fresh deployment with Azure Key Vault + Oracle Exascale
@@ -139,13 +139,12 @@ REQUIRED VARIABLES (.env):
   - AZ_LOCATION: Azure region
   - ORACLE_SSH_PUBLIC_KEY: SSH public key for Exascale VM Cluster nodes
   - DEPLOY_EXASCALE: Set to true to enable Exascale mode (default: true)
-  (ADBS_ADMIN_PASSWORD is required instead when DEPLOY_EXASCALE=false)
 
 OPTIONAL VARIABLES:
   - AZURE_SUBSCRIPTION_ID: Azure subscription
   - EXASCALE_VAULT_AZ: Availability zone for Exascale Storage Vault (default: 1)
   - EXASCALE_VAULT_STORAGE_GBS: Storage Vault size in GiB (default: 300)
-  - EXASCALE_CLUSTER_SHAPE: VM Cluster shape (default: Exadata.X11M)
+    - EXASCALE_CLUSTER_SHAPE: VM Cluster shape (default: ExaDbXS)
   - EXASCALE_CLUSTER_ENABLED_ECPU_COUNT: ECPUs to enable (default: 4)
   - EXASCALE_CLUSTER_TOTAL_ECPU_COUNT: Total ECPUs allocated (default: 4)
   - EXASCALE_CLUSTER_NODE_COUNT: Number of cluster nodes (default: 2)
@@ -297,6 +296,9 @@ validate_configuration() {
     # Export Key Vault settings
     export TF_VAR_key_vault_sku="${KEY_VAULT_SKU:-standard}"
     export TF_VAR_key_vault_public_network_access="${KEY_VAULT_PUBLIC_NETWORK_ACCESS:-true}"
+    if [[ -n "${ORACLE_SUBNET_PREFIX_LENGTH:-}" ]]; then
+        export TF_VAR_oracle_subnet_prefix_length="${ORACLE_SUBNET_PREFIX_LENGTH}"
+    fi
     echo ""
     
     # Validate required variables based on mode
@@ -304,11 +306,6 @@ validate_configuration() {
         fresh|terraform-only|create-tfvars-only)
             validation_check_required_vars "${ENV_FILE}" \
                 "AZ_LOCATION"
-            # Password only required for ADB Serverless; Exascale uses SSH key auth
-            if [[ "${TF_VAR_deploy_exascale:-false}" != "true" ]]; then
-                validation_check_required_vars "${ENV_FILE}" \
-                    "ADBS_ADMIN_PASSWORD"
-            fi
             ;;
         configure-hsm-only)
             # Only need location for HSM configuration
@@ -321,29 +318,6 @@ validate_configuration() {
                 "AZ_LOCATION"
             ;;
     esac
-    
-    # Validate ADB Serverless password format (ADB Serverless mode only)
-    if [[ "${DEPLOYMENT_MODE}" != "destroy" && "${DEPLOYMENT_MODE}" != "configure-hsm-only" && "${TF_VAR_deploy_exascale:-false}" != "true" ]]; then
-        if [[ ${#ADBS_ADMIN_PASSWORD} -lt 12 || ${#ADBS_ADMIN_PASSWORD} -gt 30 ]]; then
-            error_exit "ADBS_ADMIN_PASSWORD must be 12-30 characters"
-        fi
-        
-        if [[ ! "${ADBS_ADMIN_PASSWORD}" =~ [A-Z] ]]; then
-            error_exit "ADBS_ADMIN_PASSWORD must contain at least one uppercase letter"
-        fi
-        
-        if [[ ! "${ADBS_ADMIN_PASSWORD}" =~ [a-z] ]]; then
-            error_exit "ADBS_ADMIN_PASSWORD must contain at least one lowercase letter"
-        fi
-        
-        if [[ ! "${ADBS_ADMIN_PASSWORD}" =~ [0-9] ]]; then
-            error_exit "ADBS_ADMIN_PASSWORD must contain at least one number"
-        fi
-        
-        if [[ "${ADBS_ADMIN_PASSWORD}" == *\"* ]]; then
-            error_exit "ADBS_ADMIN_PASSWORD cannot contain double quotes"
-        fi
-    fi
     
     print_success "Configuration validated"
     echo ""
@@ -359,11 +333,7 @@ display_configuration() {
     print_kv "Deployment Mode" "${DEPLOYMENT_MODE}"
 
     # Oracle DB type
-    if [[ "${TF_VAR_deploy_exascale:-false}" == "true" ]]; then
-        print_kv "Oracle DB Type" "Exascale (Storage Vault + VM Cluster)"
-    else
-        print_kv "Oracle DB Type" "Oracle Exascale"
-    fi
+    print_kv "Oracle DB Type" "Exascale (Storage Vault + VM Cluster)"
 
     # Show vault type selection
     if [[ -n "${VAULT_TYPE}" ]]; then
@@ -391,21 +361,12 @@ display_configuration() {
         print_info "Oracle Exascale Configuration:"
         print_kv "  Availability Zone"     "${EXASCALE_VAULT_AZ:-1}"
         print_kv "  Vault Storage (GiB)"   "${EXASCALE_VAULT_STORAGE_GBS:-300}"
-        print_kv "  Shape"                 "${EXASCALE_CLUSTER_SHAPE:-Exadata.X11M}"
+        print_kv "  Shape"                 "${EXASCALE_CLUSTER_SHAPE:-ExaDbXS}"
         print_kv "  Enabled ECPUs"         "${EXASCALE_CLUSTER_ENABLED_ECPU_COUNT:-4}"
         print_kv "  Total ECPUs"           "${EXASCALE_CLUSTER_TOTAL_ECPU_COUNT:-4}"
         print_kv "  Node Count"            "${EXASCALE_CLUSTER_NODE_COUNT:-2}"
         print_kv "  License Model"         "${EXASCALE_CLUSTER_LICENSE_MODEL:-LicenseIncluded}"
         print_kv "  SSH Key Set"           "$([ -n "${TF_VAR_oracle_ssh_public_key:-}" ] && echo 'yes' || echo 'no')"
-    elif [[ -n "${ADBS_DISPLAY_NAME:-}" ]]; then
-        echo ""
-        print_info "Oracle ADB Serverless Configuration (legacy):"
-        print_kv "  Display Name" "${ADBS_DISPLAY_NAME}"
-        print_kv "  DB Version" "${ADBS_DB_VERSION:-19c}"
-        print_kv "  Workload" "${ADBS_WORKLOAD:-OLTP}"
-        print_kv "  Compute Model" "${ADBS_COMPUTE_MODEL:-ECPU}"
-        print_kv "  Compute Count" "${ADBS_COMPUTE_COUNT:-2}"
-        print_kv "  Storage (TB)" "${ADBS_STORAGE_SIZE_TBS:-1}"
     fi
     
     echo ""
@@ -593,37 +554,24 @@ display_summary() {
     print_kv "Jumpbox FQDN" "${vm_fqdn}"
     print_kv "Jumpbox IP" "${vm_ip}"
 
-    if [[ "${TF_VAR_deploy_exascale:-false}" == "true" ]]; then
-        local cluster_name=$(terraform_output "${tf_dir}" "exascale_vm_cluster" "json" | jq -r '.name' 2>/dev/null || echo "N/A")
-        local scan_dns=$(terraform_output "${tf_dir}" "exascale_vm_cluster" "json" | jq -r '.scan_dns_name' 2>/dev/null || echo "N/A")
-        local vault_name=$(terraform_output "${tf_dir}" "exascale_storage_vault" "json" | jq -r '.name' 2>/dev/null || echo "N/A")
-        print_kv "Exascale Cluster" "${cluster_name}"
-        print_kv "Exascale SCAN DNS" "${scan_dns}"
-        print_kv "Exascale Storage Vault" "${vault_name}"
-    else
-        local adbs_name=$(terraform_output "${tf_dir}" "autonomous_database" "json" | jq -r '.name' 2>/dev/null || echo "N/A")
-        print_kv "ADB Name" "${adbs_name}"
-    fi
+    local cluster_name=$(terraform_output "${tf_dir}" "exascale_vm_cluster" "json" | jq -r '.name' 2>/dev/null || echo "N/A")
+    local scan_dns=$(terraform_output "${tf_dir}" "exascale_vm_cluster" "json" | jq -r '.scan_dns_name' 2>/dev/null || echo "N/A")
+    local vault_name=$(terraform_output "${tf_dir}" "exascale_storage_vault" "json" | jq -r '.name' 2>/dev/null || echo "N/A")
+    print_kv "Exascale Cluster" "${cluster_name}"
+    print_kv "Exascale SCAN DNS" "${scan_dns}"
+    print_kv "Exascale Storage Vault" "${vault_name}"
 
     echo ""
     print_success "Deployment completed successfully! 🎉"
     echo ""
 
-    if [[ "${TF_VAR_deploy_exascale:-false}" == "true" ]]; then
-        print_info "Next Steps (Exascale + AKV):"
-        echo "  1. Connect to jumpbox VM: ${vm_fqdn}"
-        echo "  2. Configure OCI DNS for AKV private endpoint resolution"
-        echo "  3. Set up OAuth Service Principal on the VM Cluster"
-        echo "  4. Grant Key Vault access to the Service Principal"
-        echo "  5. Configure TDE master key to use AKV (ADMINISTER KEY MANAGEMENT)"
-        echo "  6. Validate encrypted tablespaces and AKV connectivity"
-    else
-        print_info "Next Steps (Exascale + AKV):"
-        echo "  1. Connect to jumpbox VM: ${vm_fqdn}"
-        echo "  2. Download Oracle ADB Serverless wallet from Azure Portal"
-        echo "  3. Configure Oracle client tools"
-        echo "  4. Test database connectivity"
-    fi
+    print_info "Next Steps (Exascale + AKV):"
+    echo "  1. Connect to jumpbox VM: ${vm_fqdn}"
+    echo "  2. Configure OCI DNS for AKV private endpoint resolution"
+    echo "  3. Set up OAuth Service Principal on the VM Cluster"
+    echo "  4. Grant Key Vault access to the Service Principal"
+    echo "  5. Configure TDE master key to use AKV (ADMINISTER KEY MANAGEMENT)"
+    echo "  6. Validate encrypted tablespaces and AKV connectivity"
     echo ""
     
     print_info "To view full Terraform outputs:"
@@ -714,13 +662,13 @@ main() {
     # Display banner
     cat <<'EOF'
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ___                _         _    ___  ___  ___  
-  / _ \ _ __ __ _  __| | ___   / \  |   \| _ )/ __| 
- | | | | '__/ _` |/ _` |/ _ \ / _ \ | |) | _ \\__ \ 
- | |_| | | | (_| | (_| |  __// ___ \|___/|___/|___/ 
-  \___/|_|  \__,_|\__,_|\___/_/   \_\              
-                                                     
-     + Azure Key Vault Deployment Orchestrator
+     ___                 _      _____                     _      
+    / _ \ _ __ __ _  ___| | ___| ____|_  ____ _ ___  ___| | ___ 
+ | | | | '__/ _` |/ __| |/ _ \  _| \ \/ / _` / __|/ __| |/ _ \
+ | |_| | | | (_| | (__| |  __/ |___ >  < (_| \__ \ (__| |  __/
+    \___/|_|  \__,_|\___|_|\___|_____/_/\_\__,_|___/\___|_|\___|
+
+    + Oracle Exascale + Azure Key Vault Deployment Orchestrator
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF
     echo ""

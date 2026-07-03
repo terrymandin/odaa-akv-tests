@@ -48,7 +48,7 @@ Oracle's official documentation does **not** mention that you must manually conf
 ### 1.2 `route_outbound_connections` Must Be Explicitly Set
 
 **The Gap:**
-Early Oracle documentation didn't mention that ADBS won't consistently use Private Endpoints unless you explicitly set this parameter.
+Early Oracle documentation didn't mention that Exascale won't consistently use Private Endpoints unless you explicitly set this parameter.
 
 **What's Required:**
 ```sql
@@ -71,7 +71,7 @@ ALTER DATABASE PROPERTY SET route_outbound_connections = 'enforce_private_endpoi
 - Standard networking **cannot** use Private Endpoints
 - Not all Azure regions support Advanced Networking
 - Must verify **before** any deployment begins
-- Cannot be changed after ADBS creation
+- Cannot be changed after Exascale creation
 
 **Regions Confirmed Working (as of Feb 2026):**
 - UK South ✅
@@ -208,7 +208,7 @@ In environments with User Defined Routes forcing traffic through Azure Firewall:
 Firewall lacks explicit allow rule for the HSM/Key Vault FQDN.
 
 **The Fix:**
-Add Application Rule allowing ADBS subnet → `*.vault.azure.net` or `*.managedhsm.azure.net` on port 443.
+Add Application Rule allowing Exascale subnet → `*.vault.azure.net` or `*.managedhsm.azure.net` on port 443.
 
 ### 4.3 Network ACL for HSM Needs More Privileges
 
@@ -354,7 +354,7 @@ Use **RSA-4096** for production environments for maximum compatibility and secur
 1. ✅ **Verify regional support** for Advanced Networking
 2. ✅ **Plan network topology** with all subnets and IP ranges
 3. ✅ **Document everything** (IPs, IDs, FQDNs, client_ids)
-4. ✅ **Provision in correct order** (ADBS → Key Vault → PE → DNS → OAuth → Key)
+4. ✅ **Provision in correct order** (Exascale → Key Vault → PE → DNS → OAuth → Key)
 
 ### During Implementation:
 
@@ -403,7 +403,7 @@ Use **RSA-4096** for production environments for maximum compatibility and secur
 
 **Do:**
 - Test with Standard Key Vault before attempting HSM
-- Use separate ADBS instances for testing different key types
+- Use separate Exascale instances for testing different key types
 - Script all Azure CLI commands for repeatability
 - Take screenshots of every configuration screen
 - Document every `client_id` and `object_id` immediately

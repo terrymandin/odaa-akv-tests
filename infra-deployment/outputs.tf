@@ -65,10 +65,10 @@ output "useful_info" {
     rg_name                = azurerm_resource_group.main.name
     vnet_name              = azurerm_virtual_network.main.name
     vnet_address_space     = azurerm_virtual_network.main.address_space
-    vm_name                = azurerm_windows_virtual_machine.jumpbox.name
-    vm_admin_username      = azurerm_windows_virtual_machine.jumpbox.admin_username
-    vm_public_ip_address   = azurerm_public_ip.jumpbox.ip_address
-    vm_fqdn                = azurerm_public_ip.jumpbox.fqdn
+    vm_name                = var.deploy_jumpbox_vm ? azurerm_windows_virtual_machine.jumpbox[0].name : null
+    vm_admin_username      = var.deploy_jumpbox_vm ? azurerm_windows_virtual_machine.jumpbox[0].admin_username : null
+    vm_public_ip_address   = var.deploy_jumpbox_vm ? azurerm_public_ip.jumpbox[0].ip_address : null
+    vm_fqdn                = var.deploy_jumpbox_vm ? azurerm_public_ip.jumpbox[0].fqdn : null
     akv_uri                = azurerm_key_vault.main.vault_uri
     akv_name               = azurerm_key_vault.main.name
     akv_private_ip_address = azurerm_private_endpoint.keyvault.private_service_connection[0].private_ip_address
@@ -77,12 +77,12 @@ output "useful_info" {
     fw_private_ip_address = azurerm_firewall.main.ip_configuration[0].private_ip_address
     subscription_id       = data.azurerm_client_config.current.subscription_id
     tenant_id             = data.azurerm_client_config.current.tenant_id
-    my_ip_address         = data.http.my_public_ip.response_body
+    my_ip_address         = var.deploy_jumpbox_vm ? data.http.my_public_ip[0].response_body : null
 
     # Deployment mode
-    deploy_mode = var.deploy_exascale ? "Exascale" : "ADBS"
+    deploy_mode = "Exascale"
 
-    # Exascale connection endpoint (null when using ADBS)
+    # Exascale connection endpoint
     exascale_scan_dns_name = var.deploy_exascale ? azapi_resource.exascale_vm_cluster[0].output.properties.scanDnsName : null
 
     # HSM URI (when HSM was deployed)

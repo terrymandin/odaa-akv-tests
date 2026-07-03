@@ -67,7 +67,7 @@ resource "azurerm_subnet_route_table_association" "private_endpoints" {
 
 # Associate route table with Oracle delegated subnet. x.x.1.0/24
 resource "azurerm_subnet_route_table_association" "oracle_subnet" {
-  subnet_id      = azurerm_subnet.adbs.id
+  subnet_id      = azurerm_subnet.oracle.id
   route_table_id = azurerm_route_table.firewall.id
 }
 
