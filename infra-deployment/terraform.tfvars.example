@@ -49,8 +49,8 @@ jumpbox_admin_password = "YourSecureP@ssw0rd123"
 
 # Tags
 tags = {
-  "Created By" = "temandin"
-  Expiration = "6-Jul-26"
+  "Created by" = "temandin"
+  Expiration = "10-Jul-26"
   Purpose = "AKV Testing"
 }
 
@@ -78,11 +78,11 @@ tags = {
 #   display_name                  = ""             # Auto-generated if empty
 #   hostname                      = "exahost"      # Max 12 characters
 #   cluster_name                  = "exacluster"   # Max 11 characters
-#   domain                        = "oracle-subnet"
+#   # domain                      = "example.com"  # Optional: omit to send null (field omitted)
 #   enabled_ecpu_count            = 8              # ECPUs to enable (min 0)
 #   total_ecpu_count              = 8              # Total ECPUs allocated (min 2, >= enabled)
 #   node_count                    = 1              # Number of cluster nodes
-#   shape                         = "ExaDbXS" # Oracle Exascale shape name
+#   shape                         = "EXADBXS" # Oracle Exascale shape name
 #   grid_image_ocid                 = "<grid-infrastructure-ocid>" 
 #   vm_file_system_storage_in_gbs = 220            # VM file system storage in GiB
 #   license_model                 = "LicenseIncluded"  # or "BringYourOwnLicense"

@@ -37,6 +37,7 @@ VAULT_TYPE=""  # Can be 'keyvault', 'managedhsm', or empty (use .env)
 DEPLOY_EXASCALE=""  # Overrides DEPLOY_EXASCALE from .env when set
 CLEANUP_ON_FAILURE=false
 CLEAN_STATE_ON_FRESH=false
+FORCE_TFVARS_REGENERATE=false
 ENV_FILE="${SCRIPT_DIR}/.env"
 TERRAFORM_WORK_DIR="${SCRIPT_DIR}/infra-deployment"
 
@@ -96,6 +97,7 @@ DEPLOYMENT MODES:
 OPTIONS:
   --cleanup-on-failure   Remove resources if deployment fails
     --clean-state          Reset local Terraform state before fresh deploy (forces new random suffix)
+    --force-tfvars         Regenerate terraform.tfvars even if it already exists
   --auto-approve         Skip Terraform confirmation prompts
 
 EXAMPLES:
@@ -127,6 +129,9 @@ EXAMPLES:
   # Generate tfvars for manual execution
   ./deploy-exascale-demo.sh --create-tfvars
 
+    # Force-regenerate terraform.tfvars from .env values
+    ./deploy-exascale-demo.sh --create-tfvars --force-tfvars
+
   # Destroy infrastructure
   ./deploy-exascale-demo.sh --destroy
 
@@ -144,7 +149,7 @@ OPTIONAL VARIABLES:
   - AZURE_SUBSCRIPTION_ID: Azure subscription
   - EXASCALE_VAULT_AZ: Availability zone for Exascale Storage Vault (default: 1)
   - EXASCALE_VAULT_STORAGE_GBS: Storage Vault size in GiB (default: 300)
-    - EXASCALE_CLUSTER_SHAPE: VM Cluster shape (default: ExaDbXS)
+    - EXASCALE_CLUSTER_SHAPE: VM Cluster shape (default: EXADBXS)
   - EXASCALE_CLUSTER_ENABLED_ECPU_COUNT: ECPUs to enable (default: 4)
   - EXASCALE_CLUSTER_TOTAL_ECPU_COUNT: Total ECPUs allocated (default: 4)
   - EXASCALE_CLUSTER_NODE_COUNT: Number of cluster nodes (default: 2)
@@ -211,6 +216,10 @@ parse_arguments() {
                 ;;
             --clean-state)
                 CLEAN_STATE_ON_FRESH=true
+                shift
+                ;;
+            --force-tfvars)
+                FORCE_TFVARS_REGENERATE=true
                 shift
                 ;;
             --auto-approve)
@@ -361,7 +370,7 @@ display_configuration() {
         print_info "Oracle Exascale Configuration:"
         print_kv "  Availability Zone"     "${EXASCALE_VAULT_AZ:-1}"
         print_kv "  Vault Storage (GiB)"   "${EXASCALE_VAULT_STORAGE_GBS:-300}"
-        print_kv "  Shape"                 "${EXASCALE_CLUSTER_SHAPE:-ExaDbXS}"
+        print_kv "  Shape"                 "${EXASCALE_CLUSTER_SHAPE:-EXADBXS}"
         print_kv "  Enabled ECPUs"         "${EXASCALE_CLUSTER_ENABLED_ECPU_COUNT:-4}"
         print_kv "  Total ECPUs"           "${EXASCALE_CLUSTER_TOTAL_ECPU_COUNT:-4}"
         print_kv "  Node Count"            "${EXASCALE_CLUSTER_NODE_COUNT:-2}"
@@ -493,13 +502,32 @@ configure_managed_hsm() {
 # Terraform Deployment
 # ============================================================================
 
+ensure_terraform_tfvars() {
+    local tf_dir="$1"
+    local tfvars_file="${tf_dir}/terraform.tfvars"
+
+    if [[ -f "${tfvars_file}" && "${FORCE_TFVARS_REGENERATE}" != "true" ]]; then
+        print_info "Preserving existing terraform.tfvars: ${tfvars_file}"
+        print_info "Use --force-tfvars to regenerate it from .env values"
+        return 0
+    fi
+
+    if [[ -f "${tfvars_file}" && "${FORCE_TFVARS_REGENERATE}" == "true" ]]; then
+        print_warning "Regenerating existing terraform.tfvars due to --force-tfvars"
+    else
+        print_info "terraform.tfvars not found; generating ${tfvars_file}"
+    fi
+
+    terraform_create_tfvars "${tf_dir}"
+}
+
 deploy_terraform() {
     local tf_dir="${TERRAFORM_WORK_DIR}"
     
     print_section "🏗️  Terraform Infrastructure Deployment"
     
-    # Generate terraform.tfvars
-    terraform_create_tfvars "${tf_dir}"
+    # Ensure terraform.tfvars exists (non-destructive by default)
+    ensure_terraform_tfvars "${tf_dir}"
     
     # Initialize Terraform
     terraform_init "${tf_dir}"
@@ -725,8 +753,8 @@ EOF
             ;;
         create-tfvars-only)
             local tf_dir="${TERRAFORM_WORK_DIR}"
-            terraform_create_tfvars "${tf_dir}"
-            print_success "Generated terraform.tfvars"
+            ensure_terraform_tfvars "${tf_dir}"
+            print_success "terraform.tfvars is ready"
             print_info "To deploy manually:"
             print_info "  cd ${tf_dir}"
             print_info "  terraform init"

@@ -45,8 +45,8 @@ variable "tags" {
   description = "Additional tags to apply to resources"
   type        = map(string)
   default = {
-    "Created By" = "temandin"
-    Expiry = "6-Jul-26"
+    "Created by" = "temandin"
+    Expiry = "10-Jul-26"
     Purpose = "AKV Testing"
   }
 }
@@ -159,11 +159,11 @@ Configuration for the Oracle Exascale Cloud VM Cluster (Oracle.Database/exadbVmC
 - `display_name`                  - (Optional) Display name; auto-generated if empty.
 - `hostname`                      - (Required) Hostname prefix for cluster nodes (max 12 characters).
 - `cluster_name`                  - (Optional) Short cluster identifier used in Oracle (max 11 characters).
-- `domain`                        - (Optional) DNS domain for the cluster.
+- `domain`                        - (Optional) DNS domain for the cluster. Omit to send null (field omitted from API payload).
 - `enabled_ecpu_count`            - (Required) Number of ECPUs to enable on the cluster (min 0).
 - `total_ecpu_count`              - (Required) Total ECPUs allocated to the cluster (min 2).
 - `node_count`                    - (Required) Number of cluster nodes.
-- `shape`                         - (Required) Oracle Exascale shape name (e.g., "ExaDbXS").
+- `shape`                         - (Required) Oracle Exascale shape name (e.g., "EXADBXS").
 - `grid_image_ocid`                - (Required) Grid image OCID used by Exascale VM Cluster provisioning.
 - `vm_file_system_storage_in_gbs` - (Required) VM file system storage per cluster in GiB.
 - `license_model`                 - (Optional) "LicenseIncluded" or "BringYourOwnLicense".
@@ -178,7 +178,7 @@ EXASCALE_CLUSTER_CONFIG
     display_name                  = string
     hostname                      = string
     cluster_name                  = string
-    domain                        = string
+    domain                        = optional(string)
     enabled_ecpu_count            = number
     total_ecpu_count              = number
     node_count                    = number
@@ -197,11 +197,10 @@ EXASCALE_CLUSTER_CONFIG
     display_name                  = ""
     hostname                      = "exahost"
     cluster_name                  = "exacluster"
-    domain                        = "oracle-subnet"
     enabled_ecpu_count            = 4
     total_ecpu_count              = 4
     node_count                    = 2
-    shape                         = "ExaDbXS"
+    shape                         = "EXADBXS"
     grid_image_ocid                = ""
     vm_file_system_storage_in_gbs = 220
     license_model                 = "LicenseIncluded"
@@ -234,6 +233,11 @@ EXASCALE_CLUSTER_CONFIG
   validation {
     condition     = length(var.exascale_cluster_config.cluster_name) <= 11
     error_message = "cluster_name must be 11 characters or fewer."
+  }
+
+  validation {
+    condition     = var.exascale_cluster_config.domain == null || can(regex("^([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,63}$", var.exascale_cluster_config.domain))
+    error_message = "domain must be a valid DNS domain name (for example: db.example.com or example.com)."
   }
 }
 
